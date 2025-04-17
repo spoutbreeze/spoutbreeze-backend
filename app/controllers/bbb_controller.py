@@ -6,10 +6,11 @@ import xml.etree.ElementTree as ET
 from urllib.parse import urlencode
 import time
 from typing import Optional
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/bbb", tags=["BigBlueButton"])
 
-class BroadcasterRequest:
+class BroadcasterRequest(BaseModel):
     """
     Broadcaster Model for joining a BBB meeting
     """
@@ -24,7 +25,7 @@ BBB_SERVER_BASE_URL = "https://bbb3.riadvice.ovh/bigbluebutton/api/"
 BBB_SECRET = "7s5PimdCDbeIhRkTbR11hqQmcPPhGLNvQACuLud9VKE"  # Get this from your BBB server
 
 # Configuration for the broadcaster service
-BROADCASTER_API_URL = "http://localhost:8080/broadcaster/joinBBB"
+BROADCASTER_API_URL = "http://localhost:8081/broadcaster/joinBBB"
 
 
 # Helper function to generate BBB API checksum
@@ -95,61 +96,84 @@ def call_bbb_api(api_call: str, params: dict) -> dict:
         raise HTTPException(status_code=500, detail="Failed to parse BBB response")
 
 
-async def broadcaster(rtmp_url: str, stream_key: str) -> dict:
+async def broadcaster_service(join_url: str, rtmp_url: str, stream_key: str) -> dict:
     """
     Function to handle the broadcaster's request to join a BBB meeting.
     This function is called when the broadcaster wants to start streaming.
     """
     try:
-        payload = BroadcasterRequest(
-            bbb_server_url=BBB_SERVER_BASE_URL,
-            rtmp_url=rtmp_url,
-            stream_key=stream_key
-        )
+        # Prepare the payload for the broadcaster service
+        payload = {
+            "bbb_server_url": join_url,
+            "rtmp_url": rtmp_url,
+            "stream_key": stream_key
+        }
 
+        # Call the broadcaster service
         response = requests.post(
-            BROADCASTER_API_URL,
-            headers={
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            json=payload.dict()
+            BROADCASTER_API_URL, 
+            json=payload,
+            headers={"Content-Type": "application/json", "accept": "application/json"}
         )
-
-        if response.status_code >= 400:
-            return {"status": "error", "message": f"Broadcaster API returned {response.status_code}: {response.text}"}
+        
+        if response.status_code != 200:
+            return {
+                "status": "error",
+                "message": f"Broadcaster service returned status code: {response.status_code}",
+                "details": response.text
+            }
 
         return response.json()
     except Exception as e:
-        return {"status": "error", "message": str(e)}
-
+        return {
+            "status": "error",
+            "message": f"Error calling broadcaster service: {str(e)}"
+        }
 
 @router.post("/broadcaster")
-def broadcaster_meeting(
-        meeting_id: str,
+async def broadcaster_meeting(
+        meeting_id: str = Query(..., description="ID of the BBB meeting"),
         rtmp_url: str = Query(..., description="RTMP URL for the broadcaster"),
         stream_key: str = Query(..., description="Stream key for the broadcaster"),
         password: str = Query(..., description="Password for the BBB meeting"),
 ):
     """Start broadcasting a BBB meeting to RTMP (e.g., Twitch)."""
-    # First check if the meeting is running
-    is_running = call_bbb_api("isMeetingRunning", {"meetingID": meeting_id})
+    try:
+        # First check if the meeting is running
+        is_running = call_bbb_api("isMeetingRunning", {"meetingID": meeting_id})
 
-    if is_running.get("running", "false").lower() != "true":
-        raise HTTPException(status_code=400, detail="Meeting is not running")
+        if is_running.get("running", "false").lower() != "true":
+            # I'll uncomment it later
+            # raise HTTPException(status_code=400, detail="Meeting is not running")
+            pass
 
-    # Get meeting details to verify password
-    meeting_info = call_bbb_api("getMeetingInfo", {"meetingID": meeting_id, "password": password})
+        # Get meeting details to verify password
+        meeting_info = call_bbb_api("getMeetingInfo", {"meetingID": meeting_id, "password": password})
+        
+        # Construct the proper join URL with checksum
+        join_params = {
+            "meetingID": meeting_id,
+            "fullName": "Broadcaster Bot",
+            "password": password
+        }
+        query_string = urlencode([(k, v) for k, v in join_params.items() if v])
+        checksum = generate_checksum("join", query_string, BBB_SECRET)
+        
+        join_url = f"{BBB_SERVER_BASE_URL}join?{query_string}&checksum={checksum}"
 
-    # Start the broadcaster
-    broadcaster_response = broadcaster(rtmp_url, stream_key)
+        # Start the broadcaster
+        broadcaster_response = await broadcaster_service(join_url, rtmp_url, stream_key)
 
-    return {
-        "status": "success",
-        "message": "Broadcaster started successfully",
-        "broadcaster_response": broadcaster_response,
-        "meeting_info": meeting_info
-    }
+        return {
+            "status": "success",
+            "message": "Broadcaster started successfully",
+            "broadcaster_response": broadcaster_response,
+            "meeting_info": meeting_info
+        }
+    except Exception as e:
+        # Better error handling to see what's going wrong
+        raise HTTPException(status_code=500, detail=f"Error in broadcaster: {str(e)}")
+
 
 
 @router.get("/")
