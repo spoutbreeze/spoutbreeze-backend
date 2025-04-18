@@ -14,6 +14,7 @@ class BroadcasterRequest(BaseModel):
     """
     Broadcaster Model for joining a BBB meeting
     """
+    bbb_health_check_url: str
     bbb_server_url: str
     rtmp_url: str
     stream_key: str
@@ -96,7 +97,7 @@ def call_bbb_api(api_call: str, params: dict) -> dict:
         raise HTTPException(status_code=500, detail="Failed to parse BBB response")
 
 
-async def broadcaster_service(join_url: str, rtmp_url: str, stream_key: str) -> dict:
+async def broadcaster_service(is_meeting_running_url: str, join_url: str, rtmp_url: str, stream_key: str) -> dict:
     """
     Function to handle the broadcaster's request to join a BBB meeting.
     This function is called when the broadcaster wants to start streaming.
@@ -104,6 +105,7 @@ async def broadcaster_service(join_url: str, rtmp_url: str, stream_key: str) -> 
     try:
         # Prepare the payload for the broadcaster service
         payload = {
+            "bbb_health_check_url": is_meeting_running_url,
             "bbb_server_url": join_url,
             "rtmp_url": rtmp_url,
             "stream_key": stream_key
@@ -157,12 +159,16 @@ async def broadcaster_meeting(
             "password": password
         }
         query_string = urlencode([(k, v) for k, v in join_params.items() if v])
-        checksum = generate_checksum("join", query_string, BBB_SECRET)
+        checksum_join = generate_checksum("join", query_string, BBB_SECRET)
         
-        join_url = f"{BBB_SERVER_BASE_URL}join?{query_string}&checksum={checksum}"
+        join_url = f"{BBB_SERVER_BASE_URL}join?{query_string}&checksum={checksum_join}"
 
+        # Construct the health check URL
+        checksum_is_meeting_running = generate_checksum("isMeetingRunning", f"meetingID={meeting_id}", BBB_SECRET)
+        is_meeting_running_url = f"{BBB_SERVER_BASE_URL}isMeetingRunning?meetingID={meeting_id}&checksum={checksum_is_meeting_running}"
+        
         # Start the broadcaster
-        broadcaster_response = await broadcaster_service(join_url, rtmp_url, stream_key)
+        broadcaster_response = await broadcaster_service(is_meeting_running_url, join_url, rtmp_url, stream_key)
 
         return {
             "status": "success",
