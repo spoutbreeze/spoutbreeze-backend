@@ -1,6 +1,6 @@
 from fastapi import HTTPException, status
 from jose import jwt
-from app.config import keycloak_openid, keycloak_client_id
+from app.config.config import keycloak_openid, keycloak_client_id
 
 
 class AuthService:

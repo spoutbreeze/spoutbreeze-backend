@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from app.services.auth_service import AuthService
 from app.models.auth_models import TokenRequest, TokenResponse, UserInfo
-from app.config import keycloak_openid
+from app.config.config import keycloak_openid
 
 router = APIRouter(prefix="/api", tags=["Authentication"])
 
