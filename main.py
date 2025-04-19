@@ -1,4 +1,7 @@
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.controllers.auth_controller import router as auth_router
 from app.controllers.bbb_controller import router as bbb_router
@@ -9,10 +12,14 @@ app = FastAPI(
     version="0.1.0",
 )
 
+origins = [
+    "http://localhost:3000",
+    "https://bbb3.riadvice.ovh"
+]
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # In production, replace with specific origins
+    allow_origins=origins,  # In production, replace with specific origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
