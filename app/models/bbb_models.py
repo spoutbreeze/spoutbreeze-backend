@@ -10,6 +10,12 @@ class BroadcasterRequest(BaseModel):
     rtmp_url: str
     stream_key: str
 
+class BroadcasterReq(BaseModel):
+    meeting_id: str
+    rtmp_url: str
+    stream_key: str
+    password: str
+
 class BroadcasterResponse(BaseModel):
     """
     Response model from the broadcaster service
