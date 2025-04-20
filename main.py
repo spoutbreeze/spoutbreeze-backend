@@ -5,6 +5,7 @@ from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.controllers.auth_controller import router as auth_router
 from app.controllers.bbb_controller import router as bbb_router
+from app.controllers.broadcaster_controller import router as broadcaster_router
 
 app = FastAPI(
     title="SpoutBreeze API",
@@ -27,6 +28,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth_router)
+app.include_router(broadcaster_router)
 app.include_router(bbb_router)
 
 @app.get("/", tags=["Root"])

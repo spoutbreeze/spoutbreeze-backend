@@ -3,12 +3,9 @@ from fastapi.responses import RedirectResponse
 from typing import Optional
 
 from app.services.bbb_service import BBBService
-from app.services.broadcaster_service import BroadcasterService
-from app.models.bbb_models import BroadcasterResponse, BroadcasterReq
 
 router = APIRouter(prefix="/api/bbb", tags=["BigBlueButton"])
 bbb_service = BBBService()
-broadcaster_service = BroadcasterService()
 
 @router.get("/")
 def root():
@@ -81,16 +78,3 @@ def get_meeting_info(meeting_id: str, password: str):
 def get_meetings():
     """Get the list of all meetings."""
     return bbb_service.get_meetings()
-
-@router.post("/broadcaster")
-async def broadcaster_meeting(
-        payload: BroadcasterReq = Body(..., description="Broadcaster request payload")
-):
-    """Start broadcasting a BBB meeting to RTMP (e.g., Twitch)."""
-    return await broadcaster_service.start_broadcasting(
-        meeting_id=payload.meeting_id,
-        rtmp_url=payload.rtmp_url,
-        stream_key=payload.stream_key,
-        password=payload.password,
-        bbb_service=bbb_service
-    )
