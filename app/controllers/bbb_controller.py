@@ -3,76 +3,52 @@ from fastapi.responses import RedirectResponse
 from typing import Optional
 
 from app.services.bbb_service import BBBService
+from app.models.bbb_models import (
+    CreateMeetingRequest,
+    JoinMeetingRequest,
+    EndMeetingRequest,
+    GetMeetingInfoRequest,
+    IsMeetingRunningRequest,
+)
 
 router = APIRouter(prefix="/api/bbb", tags=["BigBlueButton"])
 bbb_service = BBBService()
+
 
 @router.get("/")
 def root():
     return {"message": "BBB API Integration with FastAPI"}
 
-@router.get("/create")
-def create_meeting(
-        name: str,
-        meeting_id: Optional[str] = None,
-        attendee_pw: Optional[str] = None,
-        moderator_pw: Optional[str] = None,
-        welcome: Optional[str] = None,
-        max_participants: Optional[int] = None,
-        duration: Optional[int] = None,
-        record: Optional[bool] = None,
-        auto_start_recording: Optional[bool] = None,
-        allow_start_stop_recording: Optional[bool] = None,
-        moderator_only_message: Optional[str] = None,
-        logo_url: Optional[str] = None
-):
+
+@router.post("/create")
+def create_meeting(request: CreateMeetingRequest = Body(...)):
     """Create a new BBB meeting."""
-    return bbb_service.create_meeting(
-        name=name,
-        meeting_id=meeting_id,
-        attendee_pw=attendee_pw,
-        moderator_pw=moderator_pw,
-        welcome=welcome,
-        max_participants=max_participants,
-        duration=duration,
-        record=record,
-        auto_start_recording=auto_start_recording,
-        allow_start_stop_recording=allow_start_stop_recording,
-        moderator_only_message=moderator_only_message,
-        logo_url=logo_url
-    )
+    return bbb_service.create_meeting(request=request)
 
-@router.get("/join")
-def join_meeting(
-        meeting_id: str,
-        full_name: str,
-        password: str,
-        user_id: Optional[str] = None,
-        redirect: bool = True
-):
+
+@router.post("/join")
+def join_meeting(request: JoinMeetingRequest = Body(...)):
     """Join a BBB meeting."""
-    return bbb_service.join_meeting(
-        meeting_id=meeting_id,
-        full_name=full_name,
-        password=password,
-        user_id=user_id,
-        redirect=redirect
-    )
+    return bbb_service.join_meeting(request=request)
 
-@router.get("/end")
-def end_meeting(meeting_id: str, password: str):
+
+@router.post("/end")
+def end_meeting(request: EndMeetingRequest = Body(...)):
     """End a BBB meeting."""
-    return bbb_service.end_meeting(meeting_id, password)
+    return bbb_service.end_meeting(request=request)
 
-@router.get("/is-meeting-running")
-def is_meeting_running(meeting_id: str):
+
+@router.post("/is-meeting-running")
+def is_meeting_running(request: IsMeetingRunningRequest = Body(...)):
     """Check if a meeting is running."""
-    return bbb_service.is_meeting_running(meeting_id)
+    return bbb_service.is_meeting_running(request=request)
 
-@router.get("/get-meeting-info")
-def get_meeting_info(meeting_id: str, password: str):
+
+@router.post("/get-meeting-info")
+def get_meeting_info(request: GetMeetingInfoRequest = Body(...)):
     """Get detailed information about a meeting."""
-    return bbb_service.get_meeting_info(meeting_id, password)
+    return bbb_service.get_meeting_info(request=request)
+
 
 @router.get("/get-meetings")
 def get_meetings():
