@@ -100,14 +100,14 @@ class EndMeetingRequest(BaseModel):
 class GetMeetingInfoRequest(BaseModel):
     meeting_id: str
     password: str
-    pluginManifests: Optional[List[PluginManifests]] = None
+    # pluginManifests: Optional[List[PluginManifests]] = None
 
     class Config:
         json_schema_extra = {
             "example": {
                 "meeting_id": "test-meeting-123",
                 "password": "modPW",
-                "pluginManifests": [{"url": "http://example.com/manifest.json"}]
+                # "pluginManifests": [{"url": "http://example.com/manifest.json"}]
             }
         }
 
