@@ -9,7 +9,6 @@ from fastapi import HTTPException
 from fastapi.responses import RedirectResponse
 
 from app.config.settings import get_settings
-from app.models.bbb_models import Meeting, MeetingAttendee
 from app.utils.bbb_helpers import parse_xml_response, generate_checksum
 from app.models.bbb_models import (
     CreateMeetingRequest,
