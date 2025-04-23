@@ -17,6 +17,13 @@ class Settings(BaseSettings):
     # Broadcaster service settings
     broadcaster_api_url: str
 
+    # Twitch settings
+    twitch_server: str
+    twitch_port: int
+    twitch_nick: str
+    twitch_token: str
+    twitch_channel: str
+
     class Config:
         env_file = ".env"
 

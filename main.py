@@ -1,11 +1,12 @@
-from fastapi import FastAPI
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from fastapi import Request
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from app.controllers.auth_controller import router as auth_router
 from app.controllers.bbb_controller import router as bbb_router
 from app.controllers.broadcaster_controller import router as broadcaster_router
+
+from app.config.chat_manager import chat_manager
+from app.config.twitch_irc import twitch_client
+import asyncio
 
 app = FastAPI(
     title="SpoutBreeze API",
@@ -37,3 +38,30 @@ async def root():
     Root endpoint that returns a welcome message
     """
     return {"message": "Welcome to SpoutBreeze API"}
+
+@app.on_event("startup")
+async def startup_event():
+    """
+    Schedule the Twitch IRC client to run in the background
+    """
+    asyncio.create_task(twitch_client.connect())
+    print("[TwitchIRC] Scheduled background connect task")
+
+@app.websocket("/ws/chat/")
+async def chat_endpoint(websocket: WebSocket):
+    """
+    WebSocket endpoint for chat messages
+    """
+    await chat_manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            if data.startswith("/twitch"):
+                message = data[len("/twitch "):]
+                await twitch_client.send_message(message)
+                print(f"[TwitchIRC] Sending message: {message}")
+            else:
+                await chat_manager.broadcast(data)
+    except WebSocketDisconnect:
+        chat_manager.disconnect(websocket)
+        print("[Chat] Client disconnected")
