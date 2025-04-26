@@ -1,8 +1,6 @@
 import time
 import json
-import hashlib
 import requests
-import xml.etree.ElementTree as ET
 from urllib.parse import urlencode
 from typing import Optional, Dict, Any, List
 from fastapi import HTTPException
