@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2AuthorizationCodeBearer
+from fastapi.security import OAuth2AuthorizationCodeBearer, HTTPBearer, HTTPAuthorizationCredentials
 from app.services.auth_service import AuthService
 from app.models.auth_models import TokenRequest, TokenResponse, UserInfo
-from app.config.config import keycloak_openid
+from app.config.settings import keycloak_openid
+from app.models.auth_models import User, UserInfo, TokenRequests, TokenResponses
+
+bearer_scheme = HTTPBearer()
 
 router = APIRouter(prefix="/api", tags=["Authentication"])
 
@@ -43,4 +46,4 @@ async def exchange_token(request: TokenRequest):
     Returns:
         Access token, refresh token and other token information
     """
-    return auth_service.exchange_token(request.token, request.redirect_uri)
+    return auth_service.exchange_token(request.code, request.redirect_uri)
