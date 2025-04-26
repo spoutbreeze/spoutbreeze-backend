@@ -1,6 +1,6 @@
 from fastapi import HTTPException, status
 from jose import jwt
-from app.config.config import keycloak_openid, keycloak_client_id
+from app.config.settings import keycloak_openid, keycloak_admin, get_settings
 
 
 class AuthService:
@@ -9,6 +9,8 @@ class AuthService:
     """
 
     def __init__(self):
+        self.settings = get_settings()
+        self.keycloak_client_id = self.settings.keycloak_client_id
         self.public_key = keycloak_openid.public_key()
 
     def validate_token(self, token: str) -> dict:
@@ -20,7 +22,7 @@ class AuthService:
                 token,
                 self.public_key,
                 algorithms=["RS256"],
-                audience=keycloak_client_id,
+                audience=self.keycloak_client_id,
                 options={"verify_aud": True},
             )
 
