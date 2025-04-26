@@ -4,15 +4,11 @@ from typing import Dict, Any
 
 from app.models.bbb_models import (
     BroadcasterRequest,
-    BroadcasterResponse,
     IsMeetingRunningRequest,
-    PluginManifests,
     GetMeetingInfoRequest
 )
 from app.config.settings import get_settings
 from app.services.bbb_service import BBBService
-
-bbb_service = BBBService()
 
 
 class BroadcasterService:
@@ -26,7 +22,7 @@ class BroadcasterService:
         rtmp_url: str,
         stream_key: str,
         password: str,
-        bbb_service,
+        bbb_service: BBBService,
     ) -> Dict[str, Any]:
         """Start broadcasting a BBB meeting to RTMP."""
         try:
