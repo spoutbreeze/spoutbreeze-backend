@@ -1,21 +1,16 @@
-import os
-import socket
-import ssl
 import asyncio
-from pyexpat.errors import messages
 
-from dotenv import load_dotenv
 from app.config.chat_manager import chat_manager
-
-load_dotenv()
+from app.config.settings import get_settings
 
 class TwitchIRCClient:
     def __init__(self):
-        self.server  = os.getenv("TWITCH_SERVER", "irc.chat.twitch.tv")
-        self.port    = int(os.getenv("TWITCH_PORT", 6697))
-        self.nickname= os.getenv("TWITCH_NICK")
-        self.token   = os.getenv("TWITCH_TOKEN")
-        self.channel = f"#{os.getenv('TWITCH_CHANNEL')}"
+        self.settings = get_settings()
+        self.server = self.settings.twitch_server
+        self.port   = self.settings.twitch_port
+        self.nickname= self.settings.twitch_nick
+        self.token   = self.settings.twitch_token
+        self.channel = f"#{self.settings.twitch_channel}"
         self.reader  = None
         self.writer  = None
 
