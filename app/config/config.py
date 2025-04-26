@@ -19,12 +19,12 @@ keycloak_openid = KeycloakOpenID(
     client_secret_key=keycloak_client_secret,
 )
 
-# keycloak_admin = KeycloakAdmin(
-    # server_url=keycloak_server_url,
-    # realm_name=keycloak_realm,
-    # client_id=keycloak_client_id,
-    # client_secret_key=keycloak_client_secret,
-# )
+keycloak_admin = KeycloakAdmin(
+    server_url=keycloak_server_url,
+    realm_name=keycloak_realm,
+    client_id=keycloak_client_id,
+    client_secret_key=keycloak_client_secret,
+)
 
 
 # Get OIDC config

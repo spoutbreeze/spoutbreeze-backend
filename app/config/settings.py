@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from keycloak import KeycloakOpenID, KeycloakAdmin
 
 
 class Settings(BaseSettings):
@@ -31,3 +32,22 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings():
     return Settings()
+
+# Keycloak configuration
+keycloak_openid = KeycloakOpenID(
+    server_url=get_settings().keycloak_server_url,
+    client_id=get_settings().keycloak_client_id,
+    realm_name=get_settings().keycloak_realm,
+    client_secret_key=get_settings().keycloak_client_secret,
+)
+
+keycloak_admin = KeycloakAdmin(
+    server_url=get_settings().keycloak_server_url,
+    realm_name=get_settings().keycloak_realm,
+    client_id=get_settings().keycloak_client_id,
+    client_secret_key=get_settings().keycloak_client_secret,
+)
+
+# Get OIDC config
+# oidc_config = keycloak_openid.well_know()
+# jwks_uri = oidc_config["jwks_uri"]
