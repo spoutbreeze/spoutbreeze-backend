@@ -59,7 +59,7 @@ class CreateMeetingRequest(BaseModel):
                 "auto_start_recording": False,
                 "allow_start_stop_recording": True,
                 "moderator_only_message": "This is a private message for moderators.",
-                "logo_url": "https://example.com/logo.png",
+                "logo_url": "https://avatars.githubusercontent.com/u/77354007?v=4",
                 "pluginManifests": [{"url": "http://example.com/manifest.json"}]
             }
         }
