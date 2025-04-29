@@ -14,8 +14,9 @@ class TokenResponse(BaseModel):
     """
     access_token: str
     refresh_token: str
-    token_type: str
+    token_type: str = "Bearer"
     expires_in: int
+    user_info: dict
 
 class User(BaseModel):
     """
@@ -32,18 +33,21 @@ class UserInfo(BaseModel):
     email: Optional[str] = None
     full_name: Optional[str] = None
 
-class TokenRequests(BaseModel):
-    username: str
-    password: str
+# class TokenRequest(BaseModel):
+#     username: str
+#     password: str
 
 
-class TokenResponses(BaseModel):
-    access_token: str
-    refresh_token: str
-    expires_in: int = None
-    refresh_expires_in: int = None
-    id_token: str
-    not_before_policy: int
-    session_state: str
-    scope: str
-    token_type: str = "Bearer"
+# class TokenResponse(BaseModel):
+#     access_token: str
+#     refresh_token: str
+#     expires_in: int = None
+#     refresh_expires_in: int = None
+#     id_token: str
+#     not_before_policy: int
+#     session_state: str
+#     scope: str
+#     token_type: str = "Bearer"
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str = Field(..., description="Refresh token to obtain new access token")

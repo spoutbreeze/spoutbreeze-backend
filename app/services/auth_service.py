@@ -1,7 +1,10 @@
 from fastapi import HTTPException, status
 from jose import jwt
 from app.config.settings import keycloak_openid, keycloak_admin, get_settings
+from app.models.auth_models import RefreshTokenRequest
+import logging
 
+logger = logging.getLogger(__name__)
 
 class AuthService:
     """
@@ -59,3 +62,36 @@ class AuthService:
                 detail=f"Failed to exchange token: {str(e)}",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        
+    def refresh_token(self, data: RefreshTokenRequest) -> dict:
+        """
+        Refresh the access token using the refresh token
+        """
+        try:
+            token = keycloak_openid.refresh_token(data.refresh_token)
+            return {
+                "access_token": token["access_token"],
+                "expires_in": token["expires_in"],
+                "refresh_token": token["refresh_token"],
+            }
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token invalid or expired",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+    def get_user_info(self, access_token: str) -> dict:
+        """
+        Get user information from Keycloak using the access token
+        """
+        try:
+            user_info = keycloak_openid.userinfo(access_token)
+            return user_info
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Failed to get user info",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
