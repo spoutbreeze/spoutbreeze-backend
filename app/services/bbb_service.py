@@ -118,23 +118,29 @@ class BBBService:
 
     def get_join_url(
         self,
-        meeting_id: str,
-        full_name: str,
-        password: str,
-        user_id: Optional[str] = None,
+        request: JoinMeetingRequest,
     ) -> str:
         """Generate a join URL for a BBB meeting."""
-        params = {
-            "meetingID": meeting_id,
-            "fullName": full_name,
-            "password": password,
-            "userID": user_id,
-        }
+        # Create base params
+        processed_params = {}
 
-        # Remove None values
-        params = {k: v for k, v in params.items() if v is not None}
+        # Process parameters
+        for key, value in {
+            "meetingID": request.meeting_id,
+            "fullName": request.full_name,
+            "password": request.password,
+            "userID": request.user_id,
+        }.items():
+            if value is not None:
+                processed_params[key] = value
 
-        query_string = urlencode([(k, v) for k, v in params.items() if v])
+        # Handle pluginManifests separately
+        if request.pluginManifests:
+            # Convert Pydantic models to dict first, then to JSON string
+            plugin_dicts = [plugin.dict() for plugin in request.pluginManifests]
+            processed_params["pluginManifests"] = json.dumps(plugin_dicts)
+
+        query_string = urlencode([(k, v) for k, v in processed_params.items()])
         checksum = generate_checksum("join", query_string, self.secret)
 
         return f"{self.server_base_url}join?{query_string}&checksum={checksum}"
