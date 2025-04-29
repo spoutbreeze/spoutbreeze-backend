@@ -5,7 +5,9 @@ from typing import Dict, Any
 from app.models.bbb_models import (
     BroadcasterRequest,
     IsMeetingRunningRequest,
-    GetMeetingInfoRequest
+    GetMeetingInfoRequest,
+    JoinMeetingRequest,
+    PluginManifests,
 )
 from app.config.settings import get_settings
 from app.services.bbb_service import BBBService
@@ -36,13 +38,21 @@ class BroadcasterService:
                 pass
 
             # Get meeting details to verify password
-            meeting_info_request = GetMeetingInfoRequest(meeting_id=meeting_id, password=password)
+            meeting_info_request = GetMeetingInfoRequest(
+                meeting_id=meeting_id, password=password
+            )
             meeting_info = bbb_service.get_meeting_info(request=meeting_info_request)
 
             # Get the join URL
-            join_url = bbb_service.get_join_url(
-                meeting_id=meeting_id, full_name="Broadcaster Bot", password=password
+            plugin_manifests = [PluginManifests(url="https://a926-2c0f-4280-30-118b-48d9-91ac-6a34-ec2e.ngrok-free.app/manifest.json")]
+            join_request = JoinMeetingRequest(
+                meeting_id=meeting_id,
+                password=password,
+                full_name="Broadcaster Bot",
+                pluginManifests=plugin_manifests,
+                user_id="broadcaster_bot",
             )
+            join_url = bbb_service.get_join_url(request=join_request)
 
             # Get the health check URL
             is_meeting_running_url = bbb_service.get_is_meeting_running_url(meeting_id)
@@ -58,6 +68,8 @@ class BroadcasterService:
             return {
                 "status": "success",
                 "message": "Broadcaster started successfully",
+                "join_url": join_url,
+                "plugin_manifests": plugin_manifests,
                 "broadcaster_response": broadcaster_response,
                 "meeting_info": meeting_info,
             }
