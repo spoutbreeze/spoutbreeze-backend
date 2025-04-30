@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from typing import List, Optional
+from datetime import datetime
 from fastapi.security import (
     OAuth2AuthorizationCodeBearer,
     HTTPBearer,
@@ -157,12 +158,10 @@ async def exchange_token(request: TokenRequest, db: AsyncSession = Depends(get_d
 
         # Extract the access token
         access_token = token_data.get("access_token")
-        print(f"Access token: {access_token}")
-        # print the type of the access token
-        print(f"Type of access token: {type(access_token)}")
 
         # Get user information
         user_info = auth_service.get_user_info(access_token)
+        print("User info:", user_info)
 
         # Check if the user already exists
         keycloak_id = user_info.get("sub")
@@ -192,6 +191,7 @@ async def exchange_token(request: TokenRequest, db: AsyncSession = Depends(get_d
             existing_user.email = user_info.get("email")
             existing_user.first_name = user_info.get("given_name")
             existing_user.last_name = user_info.get("family_name")
+            existing_user.updated_at = datetime.now()
             await db.commit()
             await db.refresh(existing_user)
             logger.info(
