@@ -1,10 +1,12 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm.session import Session
+from app.config.settings import get_settings
+
+settings = get_settings()
 
 # Initialize the database engine
-DATABASE_URL = "postgresql+asyncpg://spoutbreeze:spoutbreeze@localhost/spoutbreeze"
+DATABASE_URL = settings.db_url
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 SessionLocal = sessionmaker(

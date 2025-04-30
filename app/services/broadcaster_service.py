@@ -17,6 +17,7 @@ class BroadcasterService:
     def __init__(self):
         self.settings = get_settings()
         self.broadcaster_api_url = self.settings.broadcaster_api_url
+        self.plugin_manifests_url = self.settings.plugin_manifests_url
 
     async def start_broadcasting(
         self,
@@ -44,7 +45,7 @@ class BroadcasterService:
             meeting_info = bbb_service.get_meeting_info(request=meeting_info_request)
 
             # Get the join URL
-            plugin_manifests = [PluginManifests(url="https://a926-2c0f-4280-30-118b-48d9-91ac-6a34-ec2e.ngrok-free.app/manifest.json")]
+            plugin_manifests = [PluginManifests(url=f"{self.plugin_manifests_url}/manifest.json")]
             join_request = JoinMeetingRequest(
                 meeting_id=meeting_id,
                 password=password,

@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     # BBB API settings
     bbb_server_base_url: str
     bbb_secret: str
+    plugin_manifests_url: str
 
     # Broadcaster service settings
     broadcaster_api_url: str
@@ -24,6 +25,9 @@ class Settings(BaseSettings):
     twitch_nick: str
     twitch_token: str
     twitch_channel: str
+
+    # Database settings
+    db_url: str
 
     class Config:
         env_file = ".env"
