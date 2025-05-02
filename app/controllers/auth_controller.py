@@ -21,13 +21,12 @@ from sqlalchemy import select
 from app.config.database.models import User
 from app.config.database.schemas import UserResponse
 
-import logging
+from app.config.logger_config import logger
 
 
 bearer_scheme = HTTPBearer()
 
 router = APIRouter(prefix="/api", tags=["Authentication"])
-logger = logging.getLogger(__name__)
 
 # OAuth2 scheme for token extraction
 oauth2_scheme = OAuth2AuthorizationCodeBearer(
