@@ -1,5 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from app.controllers.auth_controller import router as auth_router
 from app.controllers.bbb_controller import router as bbb_router
 from app.controllers.broadcaster_controller import router as broadcaster_router
@@ -7,10 +8,31 @@ from app.controllers.user_controller import router as user_router
 
 from app.config.chat_manager import chat_manager
 from app.config.twitch_irc import twitch_client
+from app.config.logger_config import logger
 import asyncio
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for the FastAPI application
+    """
+    # Startup: schedule the IRC client
+    task = asyncio.create_task(twitch_client.connect())
+    logger.info("[TwitchIRC] Background connect task scheduled")
+
+    yield  # your app is running
+
+    # Shutdown: cancel the IRC task
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        logger.info("[TwitchIRC] Connect task cancelled cleanly")
 
 app = FastAPI(
     title="SpoutBreeze API",
+    lifespan=lifespan,
     description="API for SpoutBreeze application with Keycloak integration",
     version="0.1.0",
 )
@@ -42,13 +64,6 @@ async def root():
     """
     return {"message": "Welcome to SpoutBreeze API"}
 
-@app.on_event("startup")
-async def startup_event():
-    """
-    Schedule the Twitch IRC client to run in the background
-    """
-    asyncio.create_task(twitch_client.connect())
-    print("[TwitchIRC] Scheduled background connect task")
 
 @app.websocket("/ws/chat/")
 async def chat_endpoint(websocket: WebSocket):
