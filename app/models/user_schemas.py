@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 
 class UserBase(BaseModel):
@@ -15,9 +16,9 @@ class UserCreate(UserBase):
 
 
 class UserResponse(UserBase):
-    id: int
+    id: UUID
     keycloak_id: str
-    created_at: datetime
+    created_at: Optional[datetime] = None
     is_active: bool
 
     model_config = {
