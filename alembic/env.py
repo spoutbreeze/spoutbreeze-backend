@@ -5,7 +5,9 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from app.config.database.models import Base
+from app.config.database.session import Base
+from app.models.user_models import User
+from app.models.stream_models import StreamSettings
 from app.config.database.session import DATABASE_URL
 
 # this is the Alembic Config object, which provides
