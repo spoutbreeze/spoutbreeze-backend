@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # Database settings
     db_url: str
 
+    # Environment settings
+    env: str = "development"
+
     class Config:
         env_file = ".env"
 
