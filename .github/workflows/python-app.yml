@@ -63,7 +63,7 @@ jobs:
 
           # BBB API configuration
           BBB_SERVER_BASE_URL=${{ secrets.BBB_SERVER_BASE_URL }}
-          BBB_SERVER_SECRET=${{ secrets.BBB_SERVER_SECRET }}
+          BBB_SECRET=${{ secrets.BBB_SECRET }}
           PLUGIN_MANIFESTS_URL=${{ secrets.PLUGIN_MANIFESTS_URL }}
 
           # Broadcaster configuration
