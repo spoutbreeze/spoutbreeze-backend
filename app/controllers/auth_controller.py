@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Form
 from datetime import datetime
 from fastapi.security import (
     OAuth2AuthorizationCodeBearer,
@@ -11,18 +11,18 @@ from app.models.auth_models import (
     UserInfo,
     RefreshTokenRequest,
 )
-from app.config.settings import keycloak_openid
+from app.config.settings import keycloak_openid, get_settings
 from app.config.database.session import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
-from app.config.database.models import User
+from app.models.user_models import User
 from app.controllers.user_controller import get_current_user
 
 from app.config.logger_config import logger
 
-
 bearer_scheme = HTTPBearer()
+settings = get_settings()
 
 router = APIRouter(prefix="/api", tags=["Authentication"])
 
@@ -34,10 +34,12 @@ oauth2_scheme = OAuth2AuthorizationCodeBearer(
 
 auth_service = AuthService()
 
+from pydantic import BaseModel
+class ProtectedRouteResponse(BaseModel):
+    message: str
 
-
-@router.get("/protected", response_model=UserInfo)
-async def protected_route(current_user: UserInfo = Depends(get_current_user)):
+@router.get("/protected", response_model=ProtectedRouteResponse)
+async def protected_route(current_user: User = Depends(get_current_user)):
     """
     Protected route that requires authentication
 
@@ -45,7 +47,7 @@ async def protected_route(current_user: UserInfo = Depends(get_current_user)):
         A welcome message with the username
     """
     return {
-        "message": f"Hello, {current_user.get('preferred_username')}! This is a protected route."
+        "message": f"Hello, {current_user.username}! This is a protected route."
     }
 
 
@@ -139,3 +141,52 @@ async def refresh_token(request: RefreshTokenRequest):
         New access token and refresh token
     """
     return auth_service.refresh_token(request.refresh_token)
+
+# FOR DEVELOPMENT ONLY
+@router.post("/dev-token", response_model=TokenResponse)
+async def get_dev_token(
+    username: str = Form(...),
+    password: str = Form(...),
+    db: AsyncSession = Depends(get_db)
+):
+    """Development endpoint to get tokens (ONLY FOR LOCAL TESTING)"""
+    try:
+        # Only allow in development mode
+        env = settings.env
+        if env != "development":
+            raise HTTPException(status_code=404, detail="Not found")
+            
+        # Get token from Keycloak
+        token_response = keycloak_openid.token(
+            grant_type="password",
+            username=username,
+            password=password
+        )
+        
+        # Process user info
+        access_token = token_response.get("access_token")
+        user_info = auth_service.get_user_info(access_token)
+        
+        # Check if user exists
+        keycloak_id = user_info.get("sub")
+        stmt = select(User).where(User.keycloak_id == keycloak_id)
+        result = await db.execute(stmt)
+        existing_user = result.scalars().first()
+        
+        # Create user if doesn't exist (similar to exchange_token)
+        if not existing_user:
+            # Create new user logic here
+            pass
+            
+        return {
+            "access_token": token_response["access_token"],
+            "expires_in": token_response["expires_in"],
+            "refresh_token": token_response["refresh_token"],
+            "refresh_expires_in": token_response["refresh_expires_in"],
+            "token_type": "Bearer",
+            "user_info": user_info
+        }
+        
+    except Exception as e:
+        logger.error(f"Dev token error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Failed to get token: {str(e)}")
