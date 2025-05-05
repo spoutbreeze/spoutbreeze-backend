@@ -77,7 +77,7 @@ jobs:
           TWITCH_CHANNEL=${{ secrets.TWITCH_CHANNEL }}
 
           # Database configuration
-          DB_URL=sqlite+aiosqlite:///./test.db
+          DB_URL=sqlite:///./test.db
 
           # Environment
           ENV=development
@@ -98,13 +98,18 @@ jobs:
             --no-access-log &> server.log &
           SERVER_PID=$!
 
-          # Wait for server to start with timeout
+          # Give server time to start up before checking
+          echo "Waiting for server to start..."
+          sleep 5
+
+          # Check if server is running
           for i in {1..10}; do
-            if curl -sSf http://127.0.0.1:8000/ >/dev/null; then
+            if curl -sSf http://127.0.0.1:8000/ >/dev/null 2>&1; then
               echo "Server is up!"
               break
             fi
-            sleep 1
+            echo "Attempt $i: Server not responding yet..."
+            sleep 2
           done
 
           # If server didn't start, show logs and exit
