@@ -97,48 +97,86 @@ jobs:
           # Add tests directory to Python path
           export PYTHONPATH=$PYTHONPATH:$(pwd)
           
+          # Print the patching script for debugging
+          echo "--- patch_imports.py content ---"
+          cat tests/tools/patch_imports.py
+          echo "--------------------------------"
+          
           # Run the patch script to modify the app files for testing
-          python tests/tools/patch_imports.py app
+          python tests/tools/patch_imports.py app --verbose
+          
+          # Verify a few key files were patched correctly
+          echo "--- Checking some patched files ---"
+          grep -n "mock_keycloak" app/config/settings.py || echo "No match in settings.py"
+          grep -n "mock_keycloak" app/services/auth_service.py || echo "No match in auth_service.py"
+          echo "--------------------------------"
 
-      - name: Smoke‑start FastAPI via Uvicorn
+      - name: Run unit tests with pytest
+        run: |
+          pytest --cov=app tests/ -v
+
+      - name: Start FastAPI and verify it's running
         run: |
           # Load environment variables
           source .env
-
+          
           # Add tests directory to PYTHONPATH
           export PYTHONPATH=$PYTHONPATH:$(pwd)
           
+          # Verify Python path and imports
+          echo "Python path: $PYTHONPATH"
+          echo "Checking import paths:"
+          python -c "import sys; print(sys.path)"
+          echo "Checking mock module:"
+          python -c "import tests.mocks.mock_keycloak; print('Mock module found')" || echo "Failed to import mock"
+          
           # Start server in background and capture process ID
-          uvicorn app.main:app \
+          python -m uvicorn app.main:app \
             --host 127.0.0.1 \
             --port 8000 \
             --lifespan off \
+            --log-level debug \
             --workers 1 \
             --timeout-keep-alive 1 \
             --no-access-log &> server.log &
           SERVER_PID=$!
-
-          # Give server time to start up before checking
+          
+          echo "Server started with PID $SERVER_PID"
+          
+          # Give the server time to start
           echo "Waiting for server to start..."
           sleep 5
-
-          # Check if server is running
-          for i in {1..10}; do
-            if curl -sSf http://127.0.0.1:8000/ >/dev/null 2>&1; then
-              echo "Server is up!"
-              break
+          
+          # Function to check server health
+          check_server() {
+            curl -sSf http://127.0.0.1:8000/health 2>/dev/null || curl -sSf http://127.0.0.1:8000/ 2>/dev/null || curl -sSf http://127.0.0.1:8000/docs 2>/dev/null
+            return $?
+          }
+          
+          # Try several times to connect to the server
+          MAX_ATTEMPTS=10
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            echo "Checking server connection (attempt $i/$MAX_ATTEMPTS)..."
+            if check_server; then
+              echo "✅ Server is responsive!"
+              
+              # Run simple endpoint tests
+              echo "Testing API documentation endpoints..."
+              curl -sSf http://127.0.0.1:8000/docs > /dev/null && echo "✅ /docs endpoint works"
+              curl -sSf http://127.0.0.1:8000/redoc > /dev/null && echo "✅ /redoc endpoint works"
+              
+              # Clean up server process
+              kill $SERVER_PID 2>/dev/null || true
+              wait $SERVER_PID 2>/dev/null || true
+              exit 0
             fi
-            echo "Attempt $i: Server not responding yet..."
             sleep 2
           done
-
-          # If server didn't start, show logs and exit
-          if ! curl -sSf http://127.0.0.1:8000/ >/dev/null; then
-            echo "::error::Server failed to start"
-            cat server.log
-            kill $SERVER_PID
-            exit 1
-          fi
-
-          # Cleanup server process
-          kill $SERVER_PID
+          
+          # If we get here, server is not responding
+          echo "::error::Server failed to respond after $MAX_ATTEMPTS attempts"
+          echo "Server logs:"
+          cat server.log
+          ps -ef | grep python
+          kill $SERVER_PID 2>/dev/null || true
+          exit 1

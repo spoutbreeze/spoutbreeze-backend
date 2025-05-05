@@ -49,18 +49,18 @@ def patch_file(file_path: str) -> bool:
     if not os.path.exists(file_path):
         logger.warning(f"File {file_path} doesn't exist")
         return False
-
+    
     try:
         with open(file_path, "r") as f:
             content = f.read()
-
+        
         # Create backup of the original file
         if not backup_file(file_path):
             return False
-
+        
         # Flag to track if any changes were made
         modified = False
-
+        
         # Process the content for each mock import
         for module, replacement in MOCK_IMPORTS.items():
             # Check if the file imports this module
@@ -68,15 +68,22 @@ def patch_file(file_path: str) -> bool:
                 rf"from\s+{module}(\.\w+)?\s+import\s+.*",
                 rf"import\s+{module}(\.\w+)?\s+.*"
             ]
-
-            for pattern in module_import_patterns:
-                if re.search(pattern, content):
-                    # Replace the import statement
-                    new_content = re.sub(pattern, replacement, content)
-                    if new_content != content:
-                        content = new_content
+            
+            # First, check if the module is imported at all
+            if any(re.search(pattern, content) for pattern in module_import_patterns):
+                # Process each import pattern separately
+                for pattern in module_import_patterns:
+                    # Find all matching import statements
+                    matches = re.finditer(pattern, content)
+                    
+                    # Process each match from end to beginning to avoid index issues
+                    matches = list(matches)
+                    for match in reversed(matches):
+                        start, end = match.span()
+                        # Replace just this specific import statement
+                        content = content[:start] + replacement + content[end:]
                         modified = True
-
+        
         # Only write the file if changes were made
         if modified:
             with open(file_path, "w") as f:
@@ -86,7 +93,7 @@ def patch_file(file_path: str) -> bool:
         else:
             logger.debug(f"No changes needed for {file_path}")
             return False
-
+    
     except Exception as e:
         logger.error(f"Error patching {file_path}: {e}")
         return False
@@ -95,38 +102,38 @@ def patch_file(file_path: str) -> bool:
 def find_and_patch_files(directory: str, pattern: str = "") -> Dict[str, int]:
     """Find and patch files matching the pattern in the directory."""
     result = {"patched": 0, "skipped": 0, "failed": 0}
-
+    
     # Convert to Path object for easier handling
     dir_path = Path(directory)
     if not dir_path.exists() or not dir_path.is_dir():
         logger.error(f"Directory {directory} doesn't exist or is not a directory")
         return result
-
+    
     # Find all Python files
     for file_path in dir_path.glob("**/*.py"):
         file_str = str(file_path)
-
+        
         # Skip if pattern is provided and doesn't match
         if pattern and pattern not in file_str:
             result["skipped"] += 1
             continue
-
+            
         # Skip backup files
         if file_str.endswith(".bak"):
             result["skipped"] += 1
             continue
-
+            
         # Skip files in the tests/mocks directory
         if "tests/mocks" in file_str:
             result["skipped"] += 1
             continue
-
+            
         # Patch the file
         if patch_file(file_str):
             result["patched"] += 1
         else:
             result["failed"] += 1
-
+    
     return result
 
 
@@ -134,7 +141,7 @@ def restore_backups(directory: str) -> int:
     """Restore backed up files."""
     restored = 0
     dir_path = Path(directory)
-
+    
     for backup_path in dir_path.glob("**/*.py.bak"):
         original_path = str(backup_path)[:-4]  # Remove .bak extension
         try:
@@ -144,7 +151,7 @@ def restore_backups(directory: str) -> int:
             restored += 1
         except Exception as e:
             logger.error(f"Failed to restore {original_path}: {e}")
-
+    
     return restored
 
 
@@ -160,11 +167,11 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-
+    
     # Set log level
     if args.verbose:
         logger.setLevel(logging.DEBUG)
-
+    
     if args.restore:
         restored = restore_backups(args.directory)
         logger.info(f"Restored {restored} files")
