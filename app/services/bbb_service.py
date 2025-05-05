@@ -76,7 +76,7 @@ class BBBService:
         # Handle pluginManifests separately
         if request.pluginManifests:
             # Convert Pydantic models to dict first, then to JSON string
-            plugin_dicts = [plugin.dict() for plugin in request.pluginManifests]
+            plugin_dicts = [plugin.model_dump() if hasattr(plugin, 'model_dump') else plugin.dict() for plugin in request.pluginManifests]
             processed_params["pluginManifests"] = json.dumps(plugin_dicts)
 
         # Create query string
@@ -137,7 +137,7 @@ class BBBService:
         # Handle pluginManifests separately
         if request.pluginManifests:
             # Convert Pydantic models to dict first, then to JSON string
-            plugin_dicts = [plugin.dict() for plugin in request.pluginManifests]
+            plugin_dicts = [plugin.model_dump() if hasattr(plugin, 'model_dump') else plugin.dict() for plugin in request.pluginManifests]
             processed_params["pluginManifests"] = json.dumps(plugin_dicts)
 
         query_string = urlencode([(k, v) for k, v in processed_params.items()])
@@ -161,8 +161,9 @@ class BBBService:
         for key, value in params.items():
             if key == "pluginManifests" and value:
                 # Convert Pydantic models to dict first, then to JSON string
-                plugin_dicts = [plugin.dict() for plugin in value]
-                processed_params[key] = json.dumps(plugin_dicts)
+                if isinstance(value, list):
+                    plugin_dicts = [plugin.model_dump() if hasattr(plugin, 'model_dump') else plugin.dict() for plugin in value]
+                    processed_params[key] = json.dumps(plugin_dicts)
             else:
                 # For regular parameters, use them as is
                 processed_params[key] = value
