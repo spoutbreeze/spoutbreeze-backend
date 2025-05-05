@@ -40,7 +40,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 mypy black isort uvicorn fastapi
+          pip install flake8 mypy black isort uvicorn fastapi aiosqlite
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Lint with flake8
@@ -77,7 +77,7 @@ jobs:
           TWITCH_CHANNEL=${{ secrets.TWITCH_CHANNEL }}
 
           # Database configuration
-          DB_URL=sqlite:///./test.db
+          DB_URL=sqlite+aiosqlite:///./test.db
 
           # Environment
           ENV=development
