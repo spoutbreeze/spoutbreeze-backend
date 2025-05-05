@@ -98,7 +98,7 @@ class BroadcasterService:
             # Call the broadcaster service
             response = requests.post(
                 self.broadcaster_api_url,
-                json=payload.dict(),
+                json=payload.model_dump(),
                 headers={
                     "Content-Type": "application/json",
                     "accept": "application/json",
