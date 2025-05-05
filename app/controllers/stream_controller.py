@@ -10,6 +10,8 @@ from app.models.stream_schemas import (
     StreamSettingsResponse,
     StreamSettingsUpdate,
     CreateStreamSettingsCreate,
+    StreamSettingsListResponse,
+    StreamSettingsDeleteResponse
 )
 from app.services.stream_service import StreamService
 
@@ -36,7 +38,7 @@ async def create_stream_settings(
     try:
         new_stream_settings = await stream_service.create_stream_settings(
             stream_settings=stream_settings,
-            user_id=current_user.id,
+            user_id=UUID(str(current_user.id)),
             db=db,
         )
         return new_stream_settings
@@ -47,7 +49,7 @@ async def create_stream_settings(
 async def get_stream_settings(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[StreamSettingsResponse]:
+) -> StreamSettingsListResponse:
     """
     Get all stream settings for the current user.
 
@@ -60,7 +62,7 @@ async def get_stream_settings(
     """
     try:
         stream_settings = await stream_service.get_stream_settings_by_user_id(
-            user_id=current_user.id,
+            user_id=UUID(str(current_user.id)),
             db=db,
         )
         return stream_settings
@@ -122,12 +124,12 @@ async def update_stream_settings(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-@router.delete("/{stream_settings_id}", response_model=StreamSettingsResponse)
+@router.delete("/{stream_settings_id}", response_model=StreamSettingsDeleteResponse)
 async def delete_stream_settings(
     stream_settings_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> StreamSettingsResponse:
+) -> StreamSettingsDeleteResponse:
     """
     Delete stream settings by ID.
     Args:
@@ -140,7 +142,7 @@ async def delete_stream_settings(
     try:
         deleted_stream_settings = await stream_service.delete_stream_settings(
             stream_settings_id=stream_settings_id,
-            user_id=current_user.id,
+            user_id=UUID(str(current_user.id)),
             db=db,
         )
         if not deleted_stream_settings:

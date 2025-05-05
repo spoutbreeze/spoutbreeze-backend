@@ -18,6 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 from app.models.user_models import User
 from app.controllers.user_controller import get_current_user
+from typing import cast
 
 from app.config.logger_config import logger
 
@@ -69,7 +70,7 @@ async def exchange_token(request: TokenRequest, db: AsyncSession = Depends(get_d
         access_token = token_data.get("access_token")
 
         # Get user information
-        user_info = auth_service.get_user_info(access_token)
+        user_info = auth_service.get_user_info(cast(str, access_token))
         print("User info:", user_info)
 
         # Check if the user already exists
@@ -96,10 +97,10 @@ async def exchange_token(request: TokenRequest, db: AsyncSession = Depends(get_d
             )
         else:
             # Update the existing user information
-            existing_user.username = user_info.get("preferred_username")
-            existing_user.email = user_info.get("email")
-            existing_user.first_name = user_info.get("given_name")
-            existing_user.last_name = user_info.get("family_name")
+            existing_user.username = str(user_info.get("preferred_username", existing_user.username))
+            existing_user.email = str(user_info.get("email", existing_user.email))
+            existing_user.first_name = str(user_info.get("given_name", existing_user.first_name))
+            existing_user.last_name = str(user_info.get("family_name", existing_user.last_name))
             existing_user.updated_at = datetime.now()
             await db.commit()
             await db.refresh(existing_user)
@@ -165,7 +166,7 @@ async def get_dev_token(
         
         # Process user info
         access_token = token_response.get("access_token")
-        user_info = auth_service.get_user_info(access_token)
+        user_info = auth_service.get_user_info(cast(str, access_token))
         
         # Check if user exists
         keycloak_id = user_info.get("sub")
@@ -178,6 +179,9 @@ async def get_dev_token(
             # Create new user logic here
             pass
             
+        # Update the expiration time to 5 hours and 24h for refresh token
+        token_response["expires_in"] = 18000  # 5 hours
+        token_response["refresh_expires_in"] = 86400  # 24 hours
         return {
             "access_token": token_response["access_token"],
             "expires_in": token_response["expires_in"],

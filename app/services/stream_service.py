@@ -1,11 +1,13 @@
 from app.models.stream_models import StreamSettings
 from app.models.stream_schemas import (
-    # StreamSettingsResponse,
+    StreamSettingsResponse,
+    StreamSettingsListResponse,
     StreamSettingsUpdate,
     CreateStreamSettingsCreate,
+    StreamSettingsDeleteResponse,
 )
 from uuid import UUID
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
@@ -22,7 +24,7 @@ class StreamService:
         stream_settings: CreateStreamSettingsCreate,
         user_id: UUID,
         db: AsyncSession,
-    ) -> StreamSettings:
+    ) -> StreamSettingsResponse:
         """
         Create a stream settings for a user
         """
@@ -45,7 +47,7 @@ class StreamService:
         self,
         user_id: UUID,
         db: AsyncSession,
-    ) -> List[StreamSettings]:
+    ) -> StreamSettingsListResponse:
         """
         Get all stream settings for a user
         """
@@ -54,13 +56,13 @@ class StreamService:
         stream_settings = result.scalars().all()
 
         logger.info(f"Stream settings retrieved for user {user_id}")
-        return stream_settings
+        return list(stream_settings)
 
     async def get_stream_settings_by_id(
         self,
         stream_settings_id: UUID,
         db: AsyncSession,
-    ) -> Optional[StreamSettings]:
+    ) -> StreamSettingsResponse:
         """
         Get stream settings by ID
         """
@@ -76,20 +78,20 @@ class StreamService:
         stream_settings_id: UUID,
         stream_settings_update: StreamSettingsUpdate,
         db: AsyncSession,
-    ) -> Optional[StreamSettings]:
+    ) -> StreamSettingsResponse:
         """
         Update stream settings by ID
         """
         # Check if the stream settings exist
-        stmt = select(StreamSettings).where(StreamSettings.id == stream_settings_id)
-        result = await db.execute(stmt)
+        select_stmt = select(StreamSettings).where(StreamSettings.id == stream_settings_id)
+        result = await db.execute(select_stmt)
         stream_settings = result.scalars().first()
         if not stream_settings:
             logger.warning(f"Stream settings with ID {stream_settings_id} not found")
             return None
         
         # Update the stream settings
-        stmt = (
+        update_stmt = (
             update(StreamSettings)
             .where(StreamSettings.id == stream_settings_id)
             .values(
@@ -98,7 +100,7 @@ class StreamService:
                 stream_key=stream_settings_update.stream_key,
             )
         )
-        await db.execute(stmt)
+        await db.execute(update_stmt)
         await db.commit()
         await db.refresh(stream_settings)
         logger.info(
@@ -111,26 +113,29 @@ class StreamService:
         stream_settings_id: UUID,
         user_id: UUID,
         db: AsyncSession,
-    ) -> Optional[StreamSettings]:
+    ) -> StreamSettingsDeleteResponse:
         """
         Delete stream settings by ID
         """
         # Check if the stream settings exist
-        stmt = select(StreamSettings).where(
+        select_stmt = select(StreamSettings).where(
             StreamSettings.id == stream_settings_id,
             StreamSettings.user_id == user_id,
         )
-        result = await db.execute(stmt)
+        result = await db.execute(select_stmt)
         stream_settings = result.scalars().first()
         if not stream_settings:
             logger.warning(f"Stream settings with ID {stream_settings_id} not found")
             return None
 
         # Delete the stream settings
-        stmt = delete(StreamSettings).where(StreamSettings.id == stream_settings_id)
-        await db.execute(stmt)
+        delete_stmt = delete(StreamSettings).where(StreamSettings.id == stream_settings_id)
+        await db.execute(delete_stmt)
         await db.commit()
         logger.info(
             f"Stream settings with ID {stream_settings_id} deleted for user {user_id}"
         )
-        return stream_settings
+        return StreamSettingsDeleteResponse(
+            message="Stream settings deleted successfully",
+            id=stream_settings_id,
+        )

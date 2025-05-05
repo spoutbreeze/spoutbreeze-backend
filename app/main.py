@@ -19,26 +19,59 @@ import asyncio
 logger = get_logger("Twitch")
 setting = get_settings()
 
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     """
-#     Lifespan context manager for the FastAPI application
-#     """
-#     # Startup: schedule the IRC client
-#     task = asyncio.create_task(twitch_client.connect())
-#     logger.info("[TwitchIRC] Background connect task scheduled")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for the FastAPI application
+    """
+    # Startup: Configure OpenAPI schema
+    openapi_schema = get_openapi(
+        title="SpoutBreeze API",
+        version="1.0.0",
+        description="SpoutBreeze API documentation",
+        routes=app.routes,
+    )
+    
+    # Add components if they don't exist
+    if "components" not in openapi_schema:
+        openapi_schema["components"] = {}
+    
+    if "schemas" not in openapi_schema["components"]:
+        openapi_schema["components"]["schemas"] = {}
+        
+    # Add security schemes
+    openapi_schema["components"]["securitySchemes"] = {
+        "bearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT"
+        }
+    }
+    
+    # Apply security globally
+    openapi_schema["security"] = [{"bearerAuth": []}]
+    
+    # Set the schema
+    app.openapi_schema = openapi_schema
 
-#     yield  # your app is running
+    # Startup: schedule the IRC client
+    task = asyncio.create_task(twitch_client.connect())
+    logger.info("[TwitchIRC] Background connect task scheduled")
 
-#     # Shutdown: cancel the IRC task
-#     task.cancel()
-#     try:
-#         await task
-#     except asyncio.CancelledError:
-#         logger.info("[TwitchIRC] Connect task cancelled cleanly")
+    yield  # your app is running
+
+    # Shutdown: cancel the IRC task
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        logger.info("[TwitchIRC] Connect task cancelled cleanly")
 
 app = FastAPI(
-    # lifespan=lifespan,
+    title="SpoutBreeze API",
+    version="1.0.0",
+    description="SpoutBreeze API documentation",
+    lifespan=lifespan,
 )
 
 # @app.on_event("startup")
@@ -69,44 +102,6 @@ async def custom_swagger_ui_html():
             "additionalQueryStringParams": {}
         }
     )
-
-# Update OpenAPI schema
-def custom_openapi():
-    if app.openapi_schema:
-        return app.openapi_schema
-    
-    # Get the auto-generated schema from FastAPI
-    openapi_schema = get_openapi(
-        title="SpoutBreeze API",
-        version="1.0.0",
-        description="SpoutBreeze API documentation",
-        routes=app.routes,
-    )
-    
-    # Make sure components exist
-    if "components" not in openapi_schema:
-        openapi_schema["components"] = {}
-    
-    # Preserve existing schemas if they exist
-    if "schemas" not in openapi_schema["components"]:
-        openapi_schema["components"]["schemas"] = {}
-        
-    # Add security schemes
-    openapi_schema["components"]["securitySchemes"] = {
-        "bearerAuth": {
-            "type": "http",
-            "scheme": "bearer",
-            "bearerFormat": "JWT"
-        }
-    }
-    
-    # Apply security globally
-    openapi_schema["security"] = [{"bearerAuth": []}]
-    
-    app.openapi_schema = openapi_schema
-    return app.openapi_schema
-
-app.openapi = custom_openapi
 
 origins = [
     "http://localhost:3000",

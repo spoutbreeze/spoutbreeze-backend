@@ -49,3 +49,14 @@ class StreamSettingsListResponse(BaseModel):
     model_config = {
         "from_attributes": True,
     }
+
+class StreamSettingsDeleteResponse(BaseModel):
+    """
+    Delete response model for stream settings
+    """
+    message: str
+    id: UUID
+
+    model_config = {
+        "from_attributes": True,
+    }

@@ -2,7 +2,7 @@ import time
 import json
 import requests
 from urllib.parse import urlencode
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 from fastapi import HTTPException
 from fastapi.responses import RedirectResponse
 
@@ -58,7 +58,7 @@ class BBBService:
     def join_meeting(
         self,
         request: JoinMeetingRequest,
-    ) -> Dict[str, Any]:
+    ) -> Union[Dict[str, Any], RedirectResponse]:
         """Join a BBB meeting."""
         # Create base params
         processed_params = {}
