@@ -9,9 +9,10 @@ router = APIRouter(prefix="/api/bbb", tags=["Broadcaster"])
 bbb_service = BBBService()
 broadcaster_service = BroadcasterService()
 
+
 @router.post("/broadcaster")
 async def broadcaster_meeting(
-        payload: BroadcasterRobot = Body(..., description="Broadcaster robot payload")
+    payload: BroadcasterRobot = Body(..., description="Broadcaster robot payload")
 ):
     """Start broadcasting a BBB meeting to RTMP (e.g., Twitch)."""
     return await broadcaster_service.start_broadcasting(
@@ -19,5 +20,5 @@ async def broadcaster_meeting(
         rtmp_url=payload.rtmp_url,
         stream_key=payload.stream_key,
         password=payload.password,
-        bbb_service=bbb_service
+        bbb_service=bbb_service,
     )
