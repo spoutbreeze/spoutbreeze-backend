@@ -7,7 +7,7 @@ from app.models.stream_schemas import (
     StreamSettingsDeleteResponse,
 )
 from uuid import UUID
-from typing import List, Optional, Sequence
+from typing import List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
@@ -83,13 +83,15 @@ class StreamService:
         Update stream settings by ID
         """
         # Check if the stream settings exist
-        select_stmt = select(StreamSettings).where(StreamSettings.id == stream_settings_id)
+        select_stmt = select(StreamSettings).where(
+            StreamSettings.id == stream_settings_id
+        )
         result = await db.execute(select_stmt)
         stream_settings = result.scalars().first()
         if not stream_settings:
             logger.warning(f"Stream settings with ID {stream_settings_id} not found")
             return None
-        
+
         # Update the stream settings
         update_stmt = (
             update(StreamSettings)
@@ -107,7 +109,7 @@ class StreamService:
             f"Stream settings with ID {stream_settings_id} updated for user {stream_settings.user_id}"
         )
         return stream_settings
-    
+
     async def delete_stream_settings(
         self,
         stream_settings_id: UUID,
@@ -129,7 +131,9 @@ class StreamService:
             return None
 
         # Delete the stream settings
-        delete_stmt = delete(StreamSettings).where(StreamSettings.id == stream_settings_id)
+        delete_stmt = delete(StreamSettings).where(
+            StreamSettings.id == stream_settings_id
+        )
         await db.execute(delete_stmt)
         await db.commit()
         logger.info(

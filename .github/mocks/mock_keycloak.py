@@ -1,6 +1,7 @@
 """
 This module mocks Keycloak dependencies for testing purposes.
 """
+
 import sys
 from unittest.mock import MagicMock
 
@@ -9,11 +10,11 @@ class MockKeycloakOpenID:
     """Mock implementation of KeycloakOpenID for testing."""
 
     def __init__(self, *args, **kwargs):
-        self.server_url = kwargs.get('server_url', 'http://mock-keycloak:8080')
-        self.client_id = kwargs.get('client_id', 'test-client')
-        self.realm_name = kwargs.get('realm_name', 'test-realm')
-        self.client_secret_key = kwargs.get('client_secret_key', 'test-secret')
-        self.verify = kwargs.get('verify', True)
+        self.server_url = kwargs.get("server_url", "http://mock-keycloak:8080")
+        self.client_id = kwargs.get("client_id", "test-client")
+        self.realm_name = kwargs.get("realm_name", "test-realm")
+        self.client_secret_key = kwargs.get("client_secret_key", "test-secret")
+        self.verify = kwargs.get("verify", True)
 
     def public_key(self):
         """Return a mock public key."""
@@ -30,7 +31,7 @@ class MockKeycloakOpenID:
             "id_token": "mock-id-token",
             "not-before-policy": 0,
             "session_state": "mock-session-state",
-            "scope": "profile email"
+            "scope": "profile email",
         }
 
     def userinfo(self, token, *args, **kwargs):
@@ -42,7 +43,7 @@ class MockKeycloakOpenID:
             "given_name": "Mock",
             "family_name": "User",
             "name": "Mock User",
-            "email_verified": True
+            "email_verified": True,
         }
 
     def logout(self, refresh_token):
@@ -61,7 +62,7 @@ class MockKeycloakOpenID:
             "typ": "Bearer",
             "session_state": "mock-session-state",
             "client_id": self.client_id,
-            "username": "mock_user"
+            "username": "mock_user",
         }
 
     def decode_token(self, token, *args, **kwargs):
@@ -77,20 +78,14 @@ class MockKeycloakOpenID:
             "azp": self.client_id,
             "session_state": "mock-session-state",
             "acr": "1",
-            "realm_access": {
-                "roles": ["offline_access", "user"]
-            },
-            "resource_access": {
-                self.client_id: {
-                    "roles": ["user"]
-                }
-            },
+            "realm_access": {"roles": ["offline_access", "user"]},
+            "resource_access": {self.client_id: {"roles": ["user"]}},
             "scope": "profile email",
             "email_verified": True,
             "preferred_username": "mock_user",
             "email": "mock@example.com",
             "given_name": "Mock",
-            "family_name": "User"
+            "family_name": "User",
         }
 
 
@@ -98,27 +93,27 @@ class MockKeycloakAdmin:
     """Mock implementation of KeycloakAdmin for testing."""
 
     def __init__(self, *args, **kwargs):
-        self.server_url = kwargs.get('server_url', 'http://mock-keycloak:8080')
-        self.realm_name = kwargs.get('realm_name', 'test-realm')
-        self.user_realm_name = kwargs.get('user_realm_name', 'test-realm')
-        self.client_id = kwargs.get('client_id', 'admin-cli')
-        self.client_secret_key = kwargs.get('client_secret_key', '')
-        self.username = kwargs.get('username', '')
-        self.password = kwargs.get('password', '')
-        self.verify = kwargs.get('verify', True)
-        self.token = {'access_token': 'mock-admin-token'}
+        self.server_url = kwargs.get("server_url", "http://mock-keycloak:8080")
+        self.realm_name = kwargs.get("realm_name", "test-realm")
+        self.user_realm_name = kwargs.get("user_realm_name", "test-realm")
+        self.client_id = kwargs.get("client_id", "admin-cli")
+        self.client_secret_key = kwargs.get("client_secret_key", "")
+        self.username = kwargs.get("username", "")
+        self.password = kwargs.get("password", "")
+        self.verify = kwargs.get("verify", True)
+        self.token = {"access_token": "mock-admin-token"}
 
     def get_users(self, *args, **kwargs):
         """Return a list of mock users."""
-        query = kwargs.get('query', '')
+        query = kwargs.get("query", "")
         if query:
-            username = query.get('username', '')
+            username = query.get("username", "")
             if username:
                 return [{"id": f"mock-user-id-{username}", "username": username}]
 
         return [
             {"id": "mock-user-id-1", "username": "mock_user1"},
-            {"id": "mock-user-id-2", "username": "mock_user2"}
+            {"id": "mock-user-id-2", "username": "mock_user2"},
         ]
 
     def get_user_id(self, username, *args, **kwargs):
@@ -147,8 +142,8 @@ class MockKeycloakAdmin:
                 "view": True,
                 "mapRoles": True,
                 "impersonate": False,
-                "manage": True
-            }
+                "manage": True,
+            },
         }
 
     def create_user(self, payload, *args, **kwargs):
@@ -163,14 +158,12 @@ class MockKeycloakAdmin:
         """Return mock realm roles."""
         return [
             {"id": "mock-role-id-1", "name": "user"},
-            {"id": "mock-role-id-2", "name": "admin"}
+            {"id": "mock-role-id-2", "name": "admin"},
         ]
 
     def get_user_realm_roles(self, user_id):
         """Return mock realm roles for a user."""
-        return [
-            {"id": "mock-role-id-1", "name": "user"}
-        ]
+        return [{"id": "mock-role-id-1", "name": "user"}]
 
     def assign_realm_roles(self, user_id, roles):
         """Mock assigning realm roles to a user."""
@@ -190,31 +183,37 @@ class KeycloakError(Exception):
 
 class KeycloakGetError(KeycloakError):
     """Keycloak GET operation error."""
+
     pass
 
 
 class KeycloakPostError(KeycloakError):
     """Keycloak POST operation error."""
+
     pass
 
 
 class KeycloakPutError(KeycloakError):
     """Keycloak PUT operation error."""
+
     pass
 
 
 class KeycloakDeleteError(KeycloakError):
     """Keycloak DELETE operation error."""
+
     pass
 
 
 class KeycloakAuthenticationError(KeycloakError):
     """Keycloak authentication error."""
+
     pass
 
 
 class KeycloakConnectionError(KeycloakError):
     """Keycloak connection error."""
+
     pass
 
 
@@ -234,4 +233,4 @@ keycloak.exceptions.KeycloakAuthenticationError = KeycloakAuthenticationError
 keycloak.exceptions.KeycloakConnectionError = KeycloakConnectionError
 
 # Export the module
-sys.modules['keycloak'] = keycloak
+sys.modules["keycloak"] = keycloak

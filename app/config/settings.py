@@ -5,6 +5,7 @@ from keycloak import KeycloakOpenID, KeycloakAdmin
 
 class Settings(BaseSettings):
     """Application settings"""
+
     # Keycloak settings
     keycloak_server_url: str
     keycloak_client_id: str
@@ -39,6 +40,7 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings():
     return Settings()
+
 
 # Keycloak configuration
 keycloak_openid = KeycloakOpenID(

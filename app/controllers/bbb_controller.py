@@ -1,6 +1,4 @@
-from fastapi import APIRouter, Query, Depends, Body
-from fastapi.responses import RedirectResponse
-from typing import Optional
+from fastapi import APIRouter, Body
 
 from app.services.bbb_service import BBBService
 from app.models.bbb_models import (

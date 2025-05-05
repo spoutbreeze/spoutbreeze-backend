@@ -1,12 +1,14 @@
 import hashlib
 import xml.etree.ElementTree as ET
 from fastapi import HTTPException
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional
+
 
 def generate_checksum(call_name: str, query_params: str, shared_secret: str) -> str:
     """Generates the checksum required for BBB API calls."""
     checksum_string = call_name + query_params + shared_secret
-    return hashlib.sha1(checksum_string.encode('utf-8')).hexdigest()
+    return hashlib.sha1(checksum_string.encode("utf-8")).hexdigest()
+
 
 def parse_xml_response(xml_content: bytes, api_call: str) -> Dict[str, Any]:
     """Parses the XML response from BBB API."""

@@ -13,6 +13,7 @@ auth_service = AuthService()
 
 router = APIRouter(prefix="/api", tags=["Users"])
 
+
 async def get_current_user(
     authorization: str = Header(None), db: AsyncSession = Depends(get_db)
 ) -> User:

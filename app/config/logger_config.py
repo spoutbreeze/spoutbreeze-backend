@@ -1,6 +1,7 @@
 import logging
 import sys
 
+
 def get_logger(name: str = __name__) -> logging.Logger:
     """
     Create and configure a logger.
@@ -33,5 +34,6 @@ def get_logger(name: str = __name__) -> logging.Logger:
         logger.addHandler(console_handler)
 
     return logger
+
 
 logger = get_logger("SpoutBreeze")

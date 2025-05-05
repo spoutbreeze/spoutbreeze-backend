@@ -6,8 +6,6 @@ from sqlalchemy import pool
 from alembic import context
 
 from app.config.database.session import Base
-from app.models.user_models import User
-from app.models.stream_models import StreamSettings
 from app.config.database.session import DATABASE_URL
 
 # this is the Alembic Config object, which provides
@@ -31,6 +29,7 @@ target_metadata = Base.metadata
 # ... etc.
 
 config.set_main_option("sqlalchemy.url", DATABASE_URL.replace("+asyncpg", ""))
+
 
 def run_migrations_offline():
     """Run migrations in 'offline' mode.
@@ -70,9 +69,7 @@ def run_migrations_online():
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

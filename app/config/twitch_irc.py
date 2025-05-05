@@ -6,25 +6,24 @@ from app.config.logger_config import get_logger
 
 logger = get_logger("Twitch")
 
+
 class TwitchIRCClient:
     def __init__(self):
         self.settings = get_settings()
         self.server = self.settings.twitch_server
-        self.port   = self.settings.twitch_port
-        self.nickname= self.settings.twitch_nick
-        self.token   = self.settings.twitch_token
+        self.port = self.settings.twitch_port
+        self.nickname = self.settings.twitch_nick
+        self.token = self.settings.twitch_token
         self.channel = f"#{self.settings.twitch_channel}"
-        self.reader  = None
-        self.writer  = None
+        self.reader = None
+        self.writer = None
 
     async def connect(self):
         while True:
             try:
                 # Open a secure TLS connection in one call
                 self.reader, self.writer = await asyncio.open_connection(
-                    self.server,
-                    self.port,
-                    ssl=True
+                    self.server, self.port, ssl=True
                 )
 
                 # Send PASS, NICK, JOIN
@@ -78,5 +77,6 @@ class TwitchIRCClient:
             logger.info(f"[TwitchIRC] Sent: {message}")
         else:
             logger.info("[TwitchIRC] Writer not initialized, cannot send message.")
+
 
 twitch_client = TwitchIRCClient()

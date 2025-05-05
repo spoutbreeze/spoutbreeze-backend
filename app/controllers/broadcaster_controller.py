@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, Body
+from fastapi import APIRouter, Body
 from app.services.broadcaster_service import BroadcasterService
-from app.models.bbb_models import BroadcasterResponse, BroadcasterRobot
+from app.models.bbb_models import BroadcasterRobot
 from app.services.bbb_service import BBBService
 
 
@@ -12,7 +12,7 @@ broadcaster_service = BroadcasterService()
 
 @router.post("/broadcaster")
 async def broadcaster_meeting(
-    payload: BroadcasterRobot = Body(..., description="Broadcaster robot payload")
+    payload: BroadcasterRobot = Body(..., description="Broadcaster robot payload"),
 ):
     """Start broadcasting a BBB meeting to RTMP (e.g., Twitch)."""
     return await broadcaster_service.start_broadcasting(

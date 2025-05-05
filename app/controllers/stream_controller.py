@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from uuid import UUID
@@ -11,12 +11,13 @@ from app.models.stream_schemas import (
     StreamSettingsUpdate,
     CreateStreamSettingsCreate,
     StreamSettingsListResponse,
-    StreamSettingsDeleteResponse
+    StreamSettingsDeleteResponse,
 )
 from app.services.stream_service import StreamService
 
 router = APIRouter(prefix="/api/stream-endpoint", tags=["Stream Endpoints"])
 stream_service = StreamService()
+
 
 @router.post("/create", response_model=StreamSettingsResponse)
 async def create_stream_settings(
@@ -45,6 +46,7 @@ async def create_stream_settings(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/", response_model=List[StreamSettingsResponse])
 async def get_stream_settings(
     db: AsyncSession = Depends(get_db),
@@ -68,7 +70,8 @@ async def get_stream_settings(
         return stream_settings
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
 @router.get("/{stream_settings_id}", response_model=StreamSettingsResponse)
 async def get_stream_settings_by_id(
     stream_settings_id: UUID,
@@ -94,7 +97,8 @@ async def get_stream_settings_by_id(
         return stream_settings
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
 @router.put("/{stream_settings_id}", response_model=StreamSettingsResponse)
 async def update_stream_settings(
     stream_settings_id: UUID,
@@ -123,7 +127,8 @@ async def update_stream_settings(
         return updated_stream_settings
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
 @router.delete("/{stream_settings_id}", response_model=StreamSettingsDeleteResponse)
 async def delete_stream_settings(
     stream_settings_id: UUID,
@@ -150,4 +155,3 @@ async def delete_stream_settings(
         return deleted_stream_settings
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    

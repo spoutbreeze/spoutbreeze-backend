@@ -8,7 +8,6 @@ from app.services.auth_service import AuthService
 from app.models.auth_models import (
     TokenRequest,
     TokenResponse,
-    UserInfo,
     RefreshTokenRequest,
 )
 from app.config.settings import keycloak_openid, get_settings
@@ -21,6 +20,8 @@ from app.controllers.user_controller import get_current_user
 from typing import cast
 
 from app.config.logger_config import logger
+from pydantic import BaseModel
+
 
 bearer_scheme = HTTPBearer()
 settings = get_settings()
@@ -34,8 +35,6 @@ oauth2_scheme = OAuth2AuthorizationCodeBearer(
 )
 
 auth_service = AuthService()
-
-from pydantic import BaseModel
 
 
 class ProtectedRouteResponse(BaseModel):
@@ -98,11 +97,25 @@ async def exchange_token(request: TokenRequest, db: AsyncSession = Depends(get_d
             )
         else:
             # Update the existing user information
-            setattr(existing_user, 'username', str(user_info.get("preferred_username", existing_user.username)))
-            setattr(existing_user, 'email', str(user_info.get("email", existing_user.email)))
-            setattr(existing_user, 'first_name', str(user_info.get("given_name", existing_user.first_name)))
-            setattr(existing_user, 'last_name', str(user_info.get("family_name", existing_user.last_name)))
-            setattr(existing_user, 'updated_at', datetime.now())
+            setattr(
+                existing_user,
+                "username",
+                str(user_info.get("preferred_username", existing_user.username)),
+            )
+            setattr(
+                existing_user, "email", str(user_info.get("email", existing_user.email))
+            )
+            setattr(
+                existing_user,
+                "first_name",
+                str(user_info.get("given_name", existing_user.first_name)),
+            )
+            setattr(
+                existing_user,
+                "last_name",
+                str(user_info.get("family_name", existing_user.last_name)),
+            )
+            setattr(existing_user, "updated_at", datetime.now())
             await db.commit()
             await db.refresh(existing_user)
             logger.info(

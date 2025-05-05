@@ -2,7 +2,7 @@ import time
 import json
 import requests
 from urllib.parse import urlencode
-from typing import Optional, Dict, Any, List, Union
+from typing import Dict, Any, Union
 from fastapi import HTTPException
 from fastapi.responses import RedirectResponse
 
@@ -76,7 +76,10 @@ class BBBService:
         # Handle pluginManifests separately
         if request.pluginManifests:
             # Convert Pydantic models to dict first, then to JSON string
-            plugin_dicts = [plugin.model_dump() if hasattr(plugin, 'model_dump') else plugin.dict() for plugin in request.pluginManifests]
+            plugin_dicts = [
+                plugin.model_dump() if hasattr(plugin, "model_dump") else plugin.dict()
+                for plugin in request.pluginManifests
+            ]
             processed_params["pluginManifests"] = json.dumps(plugin_dicts)
 
         # Create query string
@@ -137,7 +140,10 @@ class BBBService:
         # Handle pluginManifests separately
         if request.pluginManifests:
             # Convert Pydantic models to dict first, then to JSON string
-            plugin_dicts = [plugin.model_dump() if hasattr(plugin, 'model_dump') else plugin.dict() for plugin in request.pluginManifests]
+            plugin_dicts = [
+                plugin.model_dump() if hasattr(plugin, "model_dump") else plugin.dict()
+                for plugin in request.pluginManifests
+            ]
             processed_params["pluginManifests"] = json.dumps(plugin_dicts)
 
         query_string = urlencode([(k, v) for k, v in processed_params.items()])
@@ -162,7 +168,12 @@ class BBBService:
             if key == "pluginManifests" and value:
                 # Convert Pydantic models to dict first, then to JSON string
                 if isinstance(value, list):
-                    plugin_dicts = [plugin.model_dump() if hasattr(plugin, 'model_dump') else plugin.dict() for plugin in value]
+                    plugin_dicts = [
+                        plugin.model_dump()
+                        if hasattr(plugin, "model_dump")
+                        else plugin.dict()
+                        for plugin in value
+                    ]
                     processed_params[key] = json.dumps(plugin_dicts)
             else:
                 # For regular parameters, use them as is

@@ -1,7 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
-from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
 from contextlib import asynccontextmanager
 from app.controllers.auth_controller import router as auth_router
@@ -19,6 +18,7 @@ import asyncio
 logger = get_logger("Twitch")
 setting = get_settings()
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -31,26 +31,22 @@ async def lifespan(app: FastAPI):
         description="SpoutBreeze API documentation",
         routes=app.routes,
     )
-    
+
     # Add components if they don't exist
     if "components" not in openapi_schema:
         openapi_schema["components"] = {}
-    
+
     if "schemas" not in openapi_schema["components"]:
         openapi_schema["components"]["schemas"] = {}
-        
+
     # Add security schemes
     openapi_schema["components"]["securitySchemes"] = {
-        "bearerAuth": {
-            "type": "http",
-            "scheme": "bearer",
-            "bearerFormat": "JWT"
-        }
+        "bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
     }
-    
+
     # Apply security globally
     openapi_schema["security"] = [{"bearerAuth": []}]
-    
+
     # Set the schema
     app.openapi_schema = openapi_schema
 
@@ -67,6 +63,7 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         logger.info("[TwitchIRC] Connect task cancelled cleanly")
 
+
 app = FastAPI(
     title="SpoutBreeze API",
     version="1.0.0",
@@ -81,6 +78,7 @@ app = FastAPI(
 #     """
 #     asyncio.create_task(twitch_client.connect())
 #     print("[TwitchIRC] Scheduled background connect task")
+
 
 # Override the default Swagger UI to add OAuth support
 @app.get("/docs", include_in_schema=False)
@@ -99,14 +97,15 @@ async def custom_swagger_ui_html():
             "realm": setting.keycloak_realm,
             "appName": "SpoutBreeze API",
             "scope": "openid profile email",
-            "additionalQueryStringParams": {}
-        }
+            "additionalQueryStringParams": {},
+        },
     )
+
 
 origins = [
     "http://localhost:3000",
     "https://bbb3.riadvice.ovh",
-    "http://localhost:8080"
+    "http://localhost:8080",
 ]
 # Configure CORS
 app.add_middleware(
@@ -117,6 +116,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/", tags=["Root"])
 async def root():
     """
@@ -124,12 +124,14 @@ async def root():
     """
     return {"message": "Welcome to SpoutBreeze API"}
 
+
 # Include routers
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(stream_router)
 app.include_router(broadcaster_router)
 app.include_router(bbb_router)
+
 
 @app.websocket("/ws/chat/")
 async def chat_endpoint(websocket: WebSocket):
@@ -141,7 +143,7 @@ async def chat_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             if data.startswith("/twitch"):
-                message = data[len("/twitch "):]
+                message = data[len("/twitch ") :]
                 await twitch_client.send_message(message)
                 logger.info(f"[TwitchIRC] Sending message: {message}")
             else:
@@ -149,4 +151,3 @@ async def chat_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         chat_manager.disconnect(websocket)
         logger.info("[Chat] Client disconnected")
-

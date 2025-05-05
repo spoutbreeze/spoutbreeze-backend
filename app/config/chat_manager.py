@@ -1,6 +1,7 @@
 from typing import List
 from fastapi import WebSocket
 
+
 class ChatManager:
     def __init__(self) -> None:
         self.active_connections: List[WebSocket] = []
@@ -15,5 +16,6 @@ class ChatManager:
     async def broadcast(self, message: str) -> None:
         for connection in self.active_connections:
             await connection.send_text(message)
+
 
 chat_manager = ChatManager()

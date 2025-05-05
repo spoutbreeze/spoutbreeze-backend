@@ -16,6 +16,7 @@ SessionLocal = async_sessionmaker(
 
 Base = declarative_base()
 
+
 async def get_db():
     """
     Dependency to get the database session.

@@ -45,7 +45,9 @@ class BroadcasterService:
             meeting_info = bbb_service.get_meeting_info(request=meeting_info_request)
 
             # Get the join URL
-            plugin_manifests = [PluginManifests(url=f"{self.plugin_manifests_url}/manifest.json")]
+            plugin_manifests = [
+                PluginManifests(url=f"{self.plugin_manifests_url}/manifest.json")
+            ]
             join_request = JoinMeetingRequest(
                 meeting_id=meeting_id,
                 password=password,

@@ -1,14 +1,17 @@
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
+
 class BroadcasterRequest(BaseModel):
     """
     Broadcaster Model for joining a BBB meeting
     """
+
     bbb_health_check_url: str
     bbb_server_url: str
     rtmp_url: str
     stream_key: str
+
 
 class BroadcasterRobot(BaseModel):
     meeting_id: str
@@ -16,19 +19,24 @@ class BroadcasterRobot(BaseModel):
     stream_key: str
     password: str
 
+
 class BroadcasterResponse(BaseModel):
     """
     Response model from the broadcaster service
     """
+
     status: str
     message: str
     details: Optional[Dict[str, Any]] = None
+
 
 class PluginManifests(BaseModel):
     """
     Model for the plugin
     """
-    url : str
+
+    url: str
+
 
 class CreateMeetingRequest(BaseModel):
     name: str
@@ -60,9 +68,10 @@ class CreateMeetingRequest(BaseModel):
                 "allow_start_stop_recording": True,
                 "moderator_only_message": "This is a private message for moderators.",
                 "logo_url": "https://avatars.githubusercontent.com/u/77354007?v=4",
-                "pluginManifests": [{"url": "http://example.com/manifest.json"}]
+                "pluginManifests": [{"url": "http://example.com/manifest.json"}],
             }
         }
+
 
 class JoinMeetingRequest(BaseModel):
     meeting_id: str
@@ -71,6 +80,7 @@ class JoinMeetingRequest(BaseModel):
     user_id: Optional[str] = None
     redirect: Optional[bool] = True
     pluginManifests: Optional[List[PluginManifests]] = None
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -79,9 +89,10 @@ class JoinMeetingRequest(BaseModel):
                 "password": "modPW",
                 "user_id": "user-123",
                 "redirect": True,
-                "PluginManifests": [{"url": "http://example.com/manifest.json"}]
+                "PluginManifests": [{"url": "http://example.com/manifest.json"}],
             }
         }
+
 
 class EndMeetingRequest(BaseModel):
     meeting_id: str
@@ -93,9 +104,10 @@ class EndMeetingRequest(BaseModel):
             "example": {
                 "meeting_id": "test-meeting-123",
                 "password": "modPW",
-                "pluginManifests": [{"url": "http://example.com/manifest.json"}]
+                "pluginManifests": [{"url": "http://example.com/manifest.json"}],
             }
         }
+
 
 class GetMeetingInfoRequest(BaseModel):
     meeting_id: str
@@ -111,6 +123,7 @@ class GetMeetingInfoRequest(BaseModel):
             }
         }
 
+
 class IsMeetingRunningRequest(BaseModel):
     meeting_id: str
     pluginManifests: Optional[List[PluginManifests]] = None
@@ -119,7 +132,7 @@ class IsMeetingRunningRequest(BaseModel):
         json_schema_extra = {
             "example": {
                 "meeting_id": "test-meeting-123",
-                "PluginManifests": [{"url": "http://example.com/manifest.json"}]
+                "PluginManifests": [{"url": "http://example.com/manifest.json"}],
             }
         }
 
@@ -128,6 +141,7 @@ class MeetingAttendee(BaseModel):
     """
     Model for an attendee in a BBB meeting
     """
+
     userID: Optional[str] = None
     fullName: Optional[str] = None
     role: Optional[str] = None
@@ -137,10 +151,12 @@ class MeetingAttendee(BaseModel):
     hasVideo: Optional[bool] = None
     clientType: Optional[str] = None
 
+
 class Meeting(BaseModel):
     """
     Model for a BBB meeting
     """
+
     meetingID: str
     meetingName: str
     createTime: Optional[str] = None
