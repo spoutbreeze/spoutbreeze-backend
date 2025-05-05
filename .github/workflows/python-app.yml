@@ -52,6 +52,38 @@ jobs:
         run: |
           mypy .
 
+      - name: Create environment file
+        run: |
+          cat <<EOF > .env
+          # Keycloak configuration
+          KEYCLOAK_SERVER_URL=${{ secrets.KEYCLOAK_SERVER_URL }}
+          KEYCLOAK_REALM=${{ secrets.KEYCLOAK_REALM }}
+          KEYCLOAK_CLIENT_ID=${{ secrets.KEYCLOAK_CLIENT_ID }}
+          KEYCLOAK_CLIENT_SECRET=${{ secrets.KEYCLOAK_CLIENT_SECRET }}
+
+          # BBB API configuration
+          BBB_SERVER_BASE_URL=${{ secrets.BBB_SERVER_BASE_URL }}
+          BBB_SERVER_SECRET=${{ secrets.BBB_SERVER_SECRET }}
+          PLUGIN_MANIFESTS_URL=${{ secrets.PLUGIN_MANIFESTS_URL }}
+
+          # Broadcaster configuration
+          BROADCASTER_API_URL=${{ secrets.BROADCASTER_API_URL }}
+
+          # Twitch configuration
+          TWITCH_SERVER=irc.chat.twitch.tv
+          TWITCH_PORT=6697
+          TWITCH_NICK=${{ secrets.TWITCH_NICK }}
+          TWITCH_TOKEN=${{ secrets.TWITCH_TOKEN }}
+          TWITCH_CHANNEL=${{ secrets.TWITCH_CHANNEL }}
+
+          # Database configuration
+          DB_URL=sqlite+aiosqlite:///./test.db
+
+          # Environment
+          ENV=development
+          EOF
+          echo "Environment file created."
+
       - name: Smoke‑start FastAPI via Uvicorn
         run: |
           # Start server in background and capture process ID
