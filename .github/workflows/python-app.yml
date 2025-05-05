@@ -86,6 +86,8 @@ jobs:
 
       - name: Smoke‑start FastAPI via Uvicorn
         run: |
+          # Load environment variables
+          source .env
           # Start server in background and capture process ID
           uvicorn app.main:app \
             --host 127.0.0.1 \
