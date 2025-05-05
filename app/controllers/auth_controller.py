@@ -180,8 +180,8 @@ async def get_dev_token(
             pass
 
         # Update the expiration time to 5 hours and 24h for refresh token
-        token_response["expires_in"] = 18000  # 5 hours
-        token_response["refresh_expires_in"] = 86400  # 24 hours
+        # token_response["expires_in"] = 18000  # 5 hours
+        # token_response["refresh_expires_in"] = 86400  # 24 hours
         return {
             "access_token": token_response["access_token"],
             "expires_in": token_response["expires_in"],
