@@ -54,6 +54,32 @@ jobs:
 
       - name: Smoke‑start FastAPI via Uvicorn
         run: |
-          uvicorn app.main:app --host 127.0.0.1 --port 8000 --lifespan off --workers 1 --timeout-keep-alive 1 &  
-          sleep 5
-          curl --fail http://127.0.0.1:8000/
+          # Start server in background and capture process ID
+          uvicorn app.main:app \
+            --host 127.0.0.1 \
+            --port 8000 \
+            --lifespan off \
+            --workers 1 \
+            --timeout-keep-alive 1 \
+            --no-access-log &> server.log &
+          SERVER_PID=$!
+
+          # Wait for server to start with timeout
+          for i in {1..10}; do
+            if curl -sSf http://127.0.0.1:8000/ >/dev/null; then
+              echo "Server is up!"
+              break
+            fi
+            sleep 1
+          done
+
+          # If server didn't start, show logs and exit
+          if ! curl -sSf http://127.0.0.1:8000/ >/dev/null; then
+            echo "::error::Server failed to start"
+            cat server.log
+            kill $SERVER_PID
+            exit 1
+          fi
+
+          # Cleanup server process
+          kill $SERVER_PID
