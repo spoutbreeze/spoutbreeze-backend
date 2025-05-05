@@ -2,6 +2,9 @@ import asyncio
 
 from app.config.chat_manager import chat_manager
 from app.config.settings import get_settings
+from app.config.logger_config import get_logger
+
+logger = get_logger("Twitch")
 
 class TwitchIRCClient:
     def __init__(self):
@@ -30,10 +33,10 @@ class TwitchIRCClient:
                 self.writer.write(f"JOIN {self.channel}\r\n".encode())
                 await self.writer.drain()
 
-                print("[TwitchIRC] Connected, listening for messages…")
+                logger.info("[TwitchIRC] Connected, listening for messages…")
                 await self.listen()
             except Exception as e:
-                print(f"[TwitchIRC] Connection error: {e!r}")
+                logger.info(f"[TwitchIRC] Connection error: {e!r}")
                 # back off before retrying
                 await asyncio.sleep(5)
 
@@ -53,7 +56,7 @@ class TwitchIRCClient:
 
             if "PRIVMSG" in msg:
                 # raw IRC line
-                print(f"[TwitchIRC] ← {msg}")
+                logger.info(f"[TwitchIRC] ← {msg}")
 
                 # (optional) parse out username and text
                 # prefix is like: ":username!username@username.tmi.twitch.tv PRIVMSG #channel :message text"
@@ -61,7 +64,7 @@ class TwitchIRCClient:
                     payload = msg.split("PRIVMSG", 1)[1]
                     user = msg.split("!", 1)[0].lstrip(":")
                     text = payload.split(":", 1)[1]
-                    print(f"[TwitchIRC] {user}: {text}")
+                    logger.info(f"[TwitchIRC] {user}: {text}")
                 except Exception:
                     pass
 
@@ -72,8 +75,8 @@ class TwitchIRCClient:
             full_message = f"PRIVMSG {self.channel} :{message}\r\n"
             self.writer.write(full_message.encode())
             await self.writer.drain()
-            print(f"[TwitchIRC] Sent: {message}")
+            logger.info(f"[TwitchIRC] Sent: {message}")
         else:
-            print("[TwitchIRC] Writer not initialized, cannot send message.")
+            logger.info("[TwitchIRC] Writer not initialized, cannot send message.")
 
 twitch_client = TwitchIRCClient()
