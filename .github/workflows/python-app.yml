@@ -104,6 +104,10 @@ jobs:
         run: |
           # Load environment variables
           source .env
+
+          # Add tests directory to PYTHONPATH
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          
           # Start server in background and capture process ID
           uvicorn app.main:app \
             --host 127.0.0.1 \
