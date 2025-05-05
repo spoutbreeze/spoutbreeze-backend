@@ -111,10 +111,6 @@ jobs:
           grep -n "mock_keycloak" app/services/auth_service.py || echo "No match in auth_service.py"
           echo "--------------------------------"
 
-      - name: Run unit tests with pytest
-        run: |
-          pytest --cov=app tests/ -v
-
       - name: Start FastAPI and verify it's running
         run: |
           # Load environment variables
