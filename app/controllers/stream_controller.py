@@ -49,7 +49,7 @@ async def create_stream_settings(
 async def get_stream_settings(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> StreamSettingsListResponse:
+) -> List[StreamSettingsListResponse]:
     """
     Get all stream settings for the current user.
 
