@@ -84,6 +84,22 @@ jobs:
           EOF
           echo "Environment file created."
 
+      - name: Setup mock modules
+        run: |
+          # Create directories for mocks and testing tools
+          mkdir -p tests/mocks
+          mkdir -p tests/tools
+          
+          # Copy mock modules
+          cp $GITHUB_WORKSPACE/.github/mocks/mock_keycloak.py tests/mocks/
+          cp $GITHUB_WORKSPACE/.github/tools/patch_imports.py tests/tools/
+          
+          # Add tests directory to Python path
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          
+          # Run the patch script to modify the app files for testing
+          python tests/tools/patch_imports.py app
+
       - name: Smoke‑start FastAPI via Uvicorn
         run: |
           # Load environment variables
