@@ -1,12 +1,12 @@
-from app.config.logger_config import logger
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.services.auth_service import AuthService
 from app.config.database.session import get_db
-from app.config.database.models import User
-from app.config.database.schemas import UserResponse
+from app.config.logger_config import logger
+from app.models.user_models import User
+from app.models.user_schemas import UserResponse
 
 
 auth_service = AuthService()
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api", tags=["Users"])
 
 async def get_current_user(
     authorization: str = Header(None), db: AsyncSession = Depends(get_db)
-):
+) -> User:
     """
     Dependency to get the current user from the token
 
