@@ -47,7 +47,7 @@ class StreamService:
         self,
         user_id: UUID,
         db: AsyncSession,
-    ) -> StreamSettingsListResponse:
+    ) -> List[StreamSettingsListResponse]:
         """
         Get all stream settings for a user
         """
@@ -62,7 +62,7 @@ class StreamService:
         self,
         stream_settings_id: UUID,
         db: AsyncSession,
-    ) -> StreamSettingsResponse:
+    ) -> Optional[StreamSettingsResponse]:
         """
         Get stream settings by ID
         """
@@ -78,7 +78,7 @@ class StreamService:
         stream_settings_id: UUID,
         stream_settings_update: StreamSettingsUpdate,
         db: AsyncSession,
-    ) -> StreamSettingsResponse:
+    ) -> Optional[StreamSettingsResponse]:
         """
         Update stream settings by ID
         """
@@ -113,7 +113,7 @@ class StreamService:
         stream_settings_id: UUID,
         user_id: UUID,
         db: AsyncSession,
-    ) -> StreamSettingsDeleteResponse:
+    ) -> Optional[StreamSettingsDeleteResponse]:
         """
         Delete stream settings by ID
         """

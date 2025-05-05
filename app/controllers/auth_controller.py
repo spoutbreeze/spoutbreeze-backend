@@ -36,8 +36,11 @@ oauth2_scheme = OAuth2AuthorizationCodeBearer(
 auth_service = AuthService()
 
 from pydantic import BaseModel
+
+
 class ProtectedRouteResponse(BaseModel):
     message: str
+
 
 @router.get("/protected", response_model=ProtectedRouteResponse)
 async def protected_route(current_user: User = Depends(get_current_user)):
@@ -47,9 +50,7 @@ async def protected_route(current_user: User = Depends(get_current_user)):
     Returns:
         A welcome message with the username
     """
-    return {
-        "message": f"Hello, {current_user.username}! This is a protected route."
-    }
+    return {"message": f"Hello, {current_user.username}! This is a protected route."}
 
 
 @router.post("/token", response_model=TokenResponse)
@@ -75,7 +76,7 @@ async def exchange_token(request: TokenRequest, db: AsyncSession = Depends(get_d
 
         # Check if the user already exists
         keycloak_id = user_info.get("sub")
-        
+
         stmt = select(User).where(User.keycloak_id == keycloak_id)
         result = await db.execute(stmt)
         existing_user = result.scalars().first()
@@ -83,11 +84,11 @@ async def exchange_token(request: TokenRequest, db: AsyncSession = Depends(get_d
         if not existing_user:
             # Create a new user in the database
             new_user = User(
-                keycloak_id=keycloak_id,
-                username=user_info.get("preferred_username"),
-                email=user_info.get("email"),
-                first_name=user_info.get("given_name"),
-                last_name=user_info.get("family_name"),
+                keycloak_id=str(keycloak_id),
+                username=str(user_info.get("preferred_username", "")),
+                email=str(user_info.get("email", "")),
+                first_name=str(user_info.get("given_name", "")),
+                last_name=str(user_info.get("family_name", "")),
             )
             db.add(new_user)
             await db.commit()
@@ -97,11 +98,11 @@ async def exchange_token(request: TokenRequest, db: AsyncSession = Depends(get_d
             )
         else:
             # Update the existing user information
-            existing_user.username = str(user_info.get("preferred_username", existing_user.username))
-            existing_user.email = str(user_info.get("email", existing_user.email))
-            existing_user.first_name = str(user_info.get("given_name", existing_user.first_name))
-            existing_user.last_name = str(user_info.get("family_name", existing_user.last_name))
-            existing_user.updated_at = datetime.now()
+            setattr(existing_user, 'username', str(user_info.get("preferred_username", existing_user.username)))
+            setattr(existing_user, 'email', str(user_info.get("email", existing_user.email)))
+            setattr(existing_user, 'first_name', str(user_info.get("given_name", existing_user.first_name)))
+            setattr(existing_user, 'last_name', str(user_info.get("family_name", existing_user.last_name)))
+            setattr(existing_user, 'updated_at', datetime.now())
             await db.commit()
             await db.refresh(existing_user)
             logger.info(
@@ -143,12 +144,13 @@ async def refresh_token(request: RefreshTokenRequest):
     """
     return auth_service.refresh_token(request.refresh_token)
 
+
 # FOR DEVELOPMENT ONLY
 @router.post("/dev-token", response_model=TokenResponse)
 async def get_dev_token(
     username: str = Form(...),
     password: str = Form(...),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Development endpoint to get tokens (ONLY FOR LOCAL TESTING)"""
     try:
@@ -156,29 +158,27 @@ async def get_dev_token(
         env = settings.env
         if env != "development":
             raise HTTPException(status_code=404, detail="Not found")
-            
+
         # Get token from Keycloak
         token_response = keycloak_openid.token(
-            grant_type="password",
-            username=username,
-            password=password
+            grant_type="password", username=username, password=password
         )
-        
+
         # Process user info
         access_token = token_response.get("access_token")
         user_info = auth_service.get_user_info(cast(str, access_token))
-        
+
         # Check if user exists
         keycloak_id = user_info.get("sub")
         stmt = select(User).where(User.keycloak_id == keycloak_id)
         result = await db.execute(stmt)
         existing_user = result.scalars().first()
-        
+
         # Create user if doesn't exist (similar to exchange_token)
         if not existing_user:
             # Create new user logic here
             pass
-            
+
         # Update the expiration time to 5 hours and 24h for refresh token
         token_response["expires_in"] = 18000  # 5 hours
         token_response["refresh_expires_in"] = 86400  # 24 hours
@@ -188,9 +188,9 @@ async def get_dev_token(
             "refresh_token": token_response["refresh_token"],
             "refresh_expires_in": token_response["refresh_expires_in"],
             "token_type": "Bearer",
-            "user_info": user_info
+            "user_info": user_info,
         }
-        
+
     except Exception as e:
         logger.error(f"Dev token error: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to get token: {str(e)}")
