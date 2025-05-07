@@ -3,7 +3,7 @@ from datetime import datetime
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from ..config.database.session import Base
+from app.config.database.session import Base
 
 
 class StreamSettings(Base):

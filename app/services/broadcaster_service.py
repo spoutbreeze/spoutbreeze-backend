@@ -2,7 +2,7 @@ import requests
 from fastapi import HTTPException
 from typing import Dict, Any
 
-from app.models.bbb_models import (
+from app.models.bbb_schemas import (
     BroadcasterRequest,
     IsMeetingRunningRequest,
     GetMeetingInfoRequest,

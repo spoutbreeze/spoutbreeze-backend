@@ -4,7 +4,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
 
-from ..config.database.session import Base
+from app.config.database.session import Base
 
 
 class User(Base):
@@ -29,4 +29,7 @@ class User(Base):
     # Relationships
     stream_settings = relationship(
         "StreamSettings", back_populates="user", cascade="all, delete-orphan"
+    )
+    bbb_meetings = relationship(
+        "BbbMeeting", back_populates="user", cascade="all, delete-orphan"
     )

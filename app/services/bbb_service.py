@@ -8,13 +8,18 @@ from fastapi.responses import RedirectResponse
 
 from app.config.settings import get_settings
 from app.utils.bbb_helpers import parse_xml_response, generate_checksum
-from app.models.bbb_models import (
+from app.models.bbb_schemas import (
     CreateMeetingRequest,
     JoinMeetingRequest,
     EndMeetingRequest,
     GetMeetingInfoRequest,
     IsMeetingRunningRequest,
 )
+from app.models.bbb_models import BbbMeeting
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, update, delete  # noqa: F401
+from uuid import UUID
+from app.config.logger_config import logger
 
 
 class BBBService:
@@ -23,9 +28,11 @@ class BBBService:
         self.server_base_url = self.settings.bbb_server_base_url
         self.secret = self.settings.bbb_secret
 
-    def create_meeting(
+    async def create_meeting(
         self,
         request: CreateMeetingRequest,
+        user_id: UUID,
+        db: AsyncSession,
     ) -> Dict[str, Any]:
         """Create a new BBB meeting."""
         # Generate a meeting ID if not provided
@@ -52,8 +59,36 @@ class BBBService:
         # Remove None values
         params = {k: v for k, v in params.items() if v is not None}
 
-        # Call BBB API
-        return self._call_bbb_api("create", params)
+        response = self._call_bbb_api("create", params)
+        # Check if the meeting was created successfully
+        if response.get("returncode") != "SUCCESS":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to create meeting: {response.get('messageKey')}",
+            )
+
+        # Save meeting details to the database
+        meeting = BbbMeeting(
+            meeting_id=response.get("meetingID"),
+            internal_meeting_id=response.get("internalMeetingID"),
+            parent_meeting_id=response.get("parentMeetingID"),
+            attendee_pw=response.get("attendeePW"),
+            moderator_pw=response.get("moderatorPW"),
+            create_time=response.get("createTime"),
+            voice_bridge=response.get("voiceBridge"),
+            dial_number=response.get("dialNumber"),
+            has_user_joined=response.get("hasUserJoined"),
+            duration=response.get("duration"),
+            has_been_forcibly_ended=response.get("hasBeenForciblyEnded"),
+            message_key=response.get("messageKey"),
+            message=response.get("message"),
+            user_id=user_id,
+        )
+        db.add(meeting)
+        await db.commit()
+        await db.refresh(meeting)
+        logger.info(f"Meeting created with ID: {meeting.meeting_id} by user: {user_id}")
+        return response
 
     def join_meeting(
         self,
@@ -97,7 +132,7 @@ class BBBService:
         else:
             return {"join_url": join_url}
 
-    def end_meeting(self, request: EndMeetingRequest) -> Dict[str, Any]:
+    async def end_meeting(self, request: EndMeetingRequest) -> Dict[str, Any]:
         """End a BBB meeting."""
         params = {"meetingID": request.meeting_id, "password": request.password}
 
