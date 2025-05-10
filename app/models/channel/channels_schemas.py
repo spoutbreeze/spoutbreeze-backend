@@ -50,3 +50,7 @@ class ChannelListResponse(BaseModel):
 
     channels: List[ChannelResponse]
     total: int
+
+    model_config = {
+        "from_attributes": True,
+    }
