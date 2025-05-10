@@ -9,6 +9,9 @@ from app.config.database.session import Base
 from app.models.bbb_models import BbbMeeting  # noqa: F401
 from app.models.user_models import User  # noqa: F401
 from app.models.stream_models import StreamSettings  # noqa: F401
+from app.models.channel.channels_model import Channel  # noqa: F401
+from app.models.event.event_models import Event  # noqa: F401
+from app.models.base import user_event_association  # noqa: F401
 
 from app.config.database.session import DATABASE_URL
 

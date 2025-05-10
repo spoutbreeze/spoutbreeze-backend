@@ -20,8 +20,8 @@ class User(Base):
     keycloak_id = Column(String, unique=True, index=True, nullable=False)
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
-    first_name = Column(String)
-    last_name = Column(String)
+    first_name = Column(String, nullable=False)
+    last_name = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     is_active = Column(Boolean, default=True)
@@ -32,4 +32,15 @@ class User(Base):
     )
     bbb_meetings = relationship(
         "BbbMeeting", back_populates="user", cascade="all, delete-orphan"
+    )
+    channels = relationship(
+        "Channel", back_populates="creator", cascade="all, delete-orphan"
+    )
+    created_events = relationship(
+        "Event", back_populates="creator", cascade="all, delete-orphan"
+    )
+    organized_events = relationship(
+        "Event",
+        secondary="user_event_association",
+        back_populates="organizers",
     )

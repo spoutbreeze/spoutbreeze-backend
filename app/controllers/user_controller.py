@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Path
 from typing import List
+from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.services.auth_service import AuthService
@@ -103,3 +104,33 @@ async def get_users(
     result = await db.execute(stmt)
     users = result.scalars().all()
     return users
+
+
+@router.get("/users/{user_id}", response_model=UserResponse)
+async def get_user_by_id(
+    user_id: UUID = Path(..., title="The ID of the user to get"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get a user by ID
+
+    Args:
+        user_id: The ID of the user to get
+        db: The database session
+        current_user: The current user information
+
+    Returns:
+        The requested user information
+    """
+    stmt = select(User).where(User.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found",
+        )
+
+    return user
