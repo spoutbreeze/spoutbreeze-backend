@@ -15,8 +15,6 @@ class EventBase(BaseModel):
     start_date: datetime
     end_date: datetime
     start_time: datetime
-    organizer: str
-    channel_id: UUID
 
 
 class EventCreate(EventBase):
@@ -27,6 +25,8 @@ class EventCreate(EventBase):
     meeting_id: Optional[str] = None
     attendee_pw: Optional[str] = None
     moderator_pw: Optional[str] = None
+    organizer_ids: Optional[List[UUID]] = []
+    channel_name: str
 
 
 class EventUpdate(BaseModel):
@@ -40,8 +40,24 @@ class EventUpdate(BaseModel):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     start_time: Optional[datetime] = None
-    organizer: Optional[str] = None
+    organizer_ids: Optional[List[UUID]] = None
     channel_id: Optional[UUID] = None
+
+
+class OrganizerResponse(BaseModel):
+    """
+    Response model for organizer
+    """
+
+    id: UUID
+    username: str
+    email: str
+    first_name: str
+    last_name: str
+
+    model_config = {
+        "from_attributes": True,
+    }
 
 
 class EventResponse(EventBase):
@@ -50,7 +66,8 @@ class EventResponse(EventBase):
     """
 
     id: UUID
-    user_id: UUID
+    creator_id: UUID
+    organizers: List[OrganizerResponse] = []
     channel_id: UUID
     meeting_id: Optional[str] = None
     created_at: datetime
@@ -68,3 +85,7 @@ class EventListResponse(BaseModel):
 
     events: List[EventResponse]
     total: int
+
+    model_config = {
+        "from_attributes": True,
+    }

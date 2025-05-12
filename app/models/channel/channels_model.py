@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, List
 
-from sqlalchemy import String, ForeignKey, DateTime, func
+from sqlalchemy import String, ForeignKey, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.config.database.session import Base
@@ -34,7 +34,9 @@ class Channel(Base):
         "app.models.user_models.User", back_populates="channels"
     )
     events: Mapped[List["Event"]] = relationship(
-        "app.models.event.event_models.Event", back_populates="channel", cascade="all, delete-orphan"
+        "app.models.event.event_models.Event",
+        back_populates="channel",
+        cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:
