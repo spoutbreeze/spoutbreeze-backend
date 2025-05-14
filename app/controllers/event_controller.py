@@ -97,6 +97,38 @@ async def get_event(
         return event
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+# Get event by channel ID
+@router.get("/channel/{channel_id}", response_model=EventListResponse)
+async def get_events_by_channel(
+    channel_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> EventListResponse:
+    """
+    Get all events for a specific channel.
+
+    Args:
+        channel_id: The ID of the channel.
+        db: The database session.
+        current_user: The current user.
+
+    Returns:
+        A list of events for the specified channel.
+    """
+    try:
+        events = await event_service.get_events_by_channel_id(
+            db=db,
+            channel_id=channel_id,
+        )
+
+        return EventListResponse(events=events, total=len(events))
+    except ValueError as e:
+        # Handle the case where the channel ID is not found
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        # Handle any other exceptions
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/{event_id}", response_model=EventResponse)

@@ -1,5 +1,6 @@
 from typing import List, Dict, Any
 from uuid import UUID
+from fastapi import HTTPException
 
 from app.models.user_models import User
 from app.models.event.event_models import Event
@@ -203,6 +204,36 @@ class EventService:
             return events
         except Exception as e:
             logger.error(f"Error retrieving events: {e}")
+            raise
+
+    async def get_events_by_channel_id(
+        self,
+        db: AsyncSession,
+        channel_id: UUID,
+    ) -> List[EventResponse]:
+        """
+        Get events by channel ID.
+        """
+        try:
+            result = await db.execute(
+                select(Event)
+                .options(
+                    selectinload(Event.organizers),
+                    selectinload(Event.channel),
+                    selectinload(Event.creator),
+                )
+                .where(Event.channel_id == channel_id)
+            )
+            events = result.scalars().all()
+
+            if not events:
+                # 404 Not Found
+                raise ValueError(f"No events found for channel ID {channel_id}.")
+
+            logger.info(f"Retrieved {len(events)} events for channel ID {channel_id}")
+            return events
+        except Exception as e:
+            logger.error(f"Error retrieving events for channel ID {channel_id}: {e}")
             raise
 
     async def update_event(
