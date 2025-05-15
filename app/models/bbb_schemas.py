@@ -41,6 +41,7 @@ class PluginManifests(BaseModel):
 class CreateMeetingRequest(BaseModel):
     name: str
     meeting_id: Optional[str] = None
+    record_id: Optional[str] = None
     attendee_pw: Optional[str] = None
     moderator_pw: Optional[str] = None
     welcome: Optional[str] = None
@@ -58,6 +59,7 @@ class CreateMeetingRequest(BaseModel):
             "example": {
                 "name": "Test Meeting",
                 "meeting_id": "test-meeting-123",
+                "record_id": "record-123",
                 "attendee_pw": "attendPW",
                 "moderator_pw": "modPW",
                 "welcome": "Welcome to the meeting!",
@@ -136,6 +138,9 @@ class IsMeetingRunningRequest(BaseModel):
             }
         }
 
+class GetRecordingRequest(BaseModel):
+    meeting_id: str
+  
 
 class MeetingAttendee(BaseModel):
     """

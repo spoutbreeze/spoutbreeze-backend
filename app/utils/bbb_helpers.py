@@ -17,39 +17,55 @@ def parse_xml_response(xml_content: bytes, api_call: str) -> Dict[str, Any]:
         result: Dict[str, Any] = {"returncode": root.findtext("returncode")}
 
         if result["returncode"] == "SUCCESS":
-            # Special handling for getMeetings which has nested structure
-            if api_call == "getMeetings":
-                meetings_element = root.find("meetings")
-                if meetings_element is not None:
-                    meetings: List[Dict[str, Any]] = []
-                    for meeting in meetings_element.findall("meeting"):
-                        meeting_info: Dict[str, Any] = {}
-                        for element in meeting:
-                            # Handle nested elements like attendees
-                            if element.tag in ["attendees"]:
-                                attendees: List[Dict[str, Optional[str]]] = []
-                                for attendee in element.findall("attendee"):
-                                    attendee_info: Dict[str, Optional[str]] = {}
-                                    for attr in attendee:
-                                        attendee_info[attr.tag] = attr.text
-                                    attendees.append(attendee_info)
-                                meeting_info[element.tag] = attendees
-                            else:
-                                meeting_info[element.tag] = element.text
-                        meetings.append(meeting_info)
-                    result["meetings"] = meetings
+            # Process all child elements
+            for child in root:
+                if child.tag == "returncode":
+                    continue
+                
+                # Handle complex nested structures (meetings, recordings, etc.)
+                if len(child) > 0:  # Check if this element has children
+                    # Handle collection elements like 'meetings', 'recordings'
+                    if all(item.tag == child.tag[:-1] for item in child):  # Check if children follow naming pattern
+                        collection = []
+                        for item in child:
+                            item_dict = {}
+                            _extract_element_data(item, item_dict)
+                            collection.append(item_dict)
+                        result[child.tag] = collection
+                    else:
+                        # For other nested structures
+                        nested_dict = {}
+                        _extract_element_data(child, nested_dict)
+                        result[child.tag] = nested_dict
                 else:
-                    result["meetings"] = []
-            else:
-                # Extract other elements based on API call
-                for child in root:
-                    if child.tag != "returncode":
-                        result[child.tag] = child.text
+                    # Simple elements
+                    result[child.tag] = child.text
         else:
-            # Extract error message
+            # Extract error messages and messageKey
             result["message"] = root.findtext("message", "Unknown error")
-            raise HTTPException(status_code=400, detail=result["message"])
-
+            result["messageKey"] = root.findtext("messageKey", "")
+            
         return result
     except ET.ParseError:
         raise HTTPException(status_code=500, detail="Failed to parse BBB response")
+
+def _extract_element_data(element: ET.Element, target_dict: Dict[str, Any]) -> None:
+    """Helper function to recursively extract data from XML elements."""
+    for child in element:
+        # Handle complex nested elements (like playback, metadata)
+        if len(child) > 0:
+            # Special case for collections like 'formats' in playback
+            if all(item.tag == child.tag[:-1] for item in child) and len(child) > 0:
+                collection = []
+                for item in child:
+                    item_dict = {}
+                    _extract_element_data(item, item_dict)
+                    collection.append(item_dict)
+                target_dict[child.tag] = collection
+            else:
+                nested_dict = {}
+                _extract_element_data(child, nested_dict)
+                target_dict[child.tag] = nested_dict
+        else:
+            # For simple elements, just extract the text
+            target_dict[child.tag] = child.text
