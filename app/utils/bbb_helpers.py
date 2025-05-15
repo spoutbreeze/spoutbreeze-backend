@@ -30,13 +30,13 @@ def parse_xml_response(xml_content: bytes, api_call: str) -> Dict[str, Any]:
                     ):  # Check if children follow naming pattern
                         collection = []
                         for item in child:
-                            item_dict: Dict[str, any] = {}
+                            item_dict: Dict[str, Any] = {}
                             _extract_element_data(item, item_dict)
                             collection.append(item_dict)
                         result[child.tag] = collection
                     else:
                         # For other nested structures
-                        nested_dict: Dict[str, any] = {}
+                        nested_dict: Dict[str, Any] = {}
                         _extract_element_data(child, nested_dict)
                         result[child.tag] = nested_dict
                 else:
@@ -61,12 +61,12 @@ def _extract_element_data(element: ET.Element, target_dict: Dict[str, Any]) -> N
             if all(item.tag == child.tag[:-1] for item in child) and len(child) > 0:
                 collection = []
                 for item in child:
-                    item_dict: Dict[str, any] = {}
+                    item_dict: Dict[str, Any] = {}
                     _extract_element_data(item, item_dict)
                     collection.append(item_dict)
                 target_dict[child.tag] = collection
             else:
-                nested_dict: Dict[str, any] = {}
+                nested_dict: Dict[str, Any] = {}
                 _extract_element_data(child, nested_dict)
                 target_dict[child.tag] = nested_dict
         else:
