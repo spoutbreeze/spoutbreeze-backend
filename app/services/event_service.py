@@ -1,6 +1,5 @@
 from typing import List, Dict, Any
 from uuid import UUID
-from fastapi import HTTPException
 
 from app.models.user_models import User
 from app.models.event.event_models import Event
@@ -112,15 +111,16 @@ class EventService:
             # Create organizers list without accessing lazy-loaded attributes
             organizers_list = []
             for organizer in new_event.organizers:
-                organizers_list.append(
-                    {
-                        "id": str(organizer.id),
-                        "username": organizer.username,
-                        "email": organizer.email,
-                        "first_name": organizer.first_name,
-                        "last_name": organizer.last_name,
-                    }
-                )
+                if organizer is not None:
+                    organizers_list.append(
+                        {
+                            "id": str(organizer.id),
+                            "username": organizer.username,
+                            "email": organizer.email,
+                            "first_name": organizer.first_name,
+                            "last_name": organizer.last_name,
+                        }
+                    )
 
             event_dict = {
                 "id": str(new_event.id),
@@ -201,7 +201,7 @@ class EventService:
                 raise ValueError("No events found.")
 
             logger.info(f"Retrieved {len(events)} events")
-            return events
+            return list(events)
         except Exception as e:
             logger.error(f"Error retrieving events: {e}")
             raise
@@ -231,7 +231,7 @@ class EventService:
                 raise ValueError(f"No events found for channel ID {channel_id}.")
 
             logger.info(f"Retrieved {len(events)} events for channel ID {channel_id}")
-            return events
+            return list(events)
         except Exception as e:
             logger.error(f"Error retrieving events for channel ID {channel_id}: {e}")
             raise
@@ -333,6 +333,7 @@ class EventService:
             await db.commit()
 
             logger.info(f"Event with ID {event_id} deleted for user {user_id}")
+            return True
         except Exception as e:
             logger.error(f"Error deleting event with ID {event_id}: {e}")
             await db.rollback()

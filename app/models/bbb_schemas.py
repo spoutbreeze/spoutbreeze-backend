@@ -138,9 +138,10 @@ class IsMeetingRunningRequest(BaseModel):
             }
         }
 
+
 class GetRecordingRequest(BaseModel):
     meeting_id: str
-  
+
 
 class MeetingAttendee(BaseModel):
     """

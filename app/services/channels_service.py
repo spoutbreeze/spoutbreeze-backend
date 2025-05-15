@@ -1,5 +1,9 @@
 from app.models.channel.channels_model import Channel
-from app.models.channel.channels_schemas import ChannelCreate
+from app.models.channel.channels_schemas import (
+    ChannelCreate,
+    ChannelResponse,
+    ChannelUpdate,
+)
 from uuid import UUID
 from typing import List, Optional
 
@@ -41,7 +45,7 @@ class ChannelsService:
         self,
         db: AsyncSession,
         user_id: UUID,
-    ) -> List[Channel]:
+    ) -> List[ChannelResponse]:
         """
         Get all channels for a user.
         """
@@ -51,7 +55,7 @@ class ChannelsService:
             )
             channels = result.scalars().all()
             logger.info(f"Retrieved {len(channels)} channels for user {user_id}")
-            return channels
+            return list(channels)
         except Exception as e:
             logger.error(f"Error retrieving channels for user {user_id}: {e}")
             raise
@@ -79,7 +83,7 @@ class ChannelsService:
     async def get_channels(
         self,
         db: AsyncSession,
-    ) -> List[Channel]:
+    ) -> List[ChannelResponse]:
         """
         Get all channels.
         """
@@ -87,7 +91,7 @@ class ChannelsService:
             result = await db.execute(select(Channel))
             channels = result.scalars().all()
             logger.info(f"Retrieved {len(channels)} channels")
-            return channels
+            return list(channels)
         except Exception as e:
             logger.error(f"Error retrieving channels: {e}")
             raise
@@ -124,18 +128,18 @@ class ChannelsService:
         self,
         db: AsyncSession,
         channel_id: UUID,
-        channel_update: ChannelCreate,
+        channel_update: ChannelUpdate,
         user_id: UUID,
     ) -> Optional[Channel]:
         """
         Update a channel by ID.
         """
         #  Check if the channel exists and belongs to the user
-        stmt = select(Channel).where(
+        query = select(Channel).where(
             Channel.id == channel_id,
             Channel.creator_id == user_id,
         )
-        result = await db.execute(stmt)
+        result = await db.execute(query)
         channel = result.scalar_one_or_none()
         if not channel:
             logger.warning(
@@ -146,8 +150,10 @@ class ChannelsService:
             update_data = {
                 k: v for k, v in channel_update.model_dump().items() if v is not None
             }
-            stmt = update(Channel).where(Channel.id == channel_id).values(**update_data)
-            await db.execute(stmt)
+            update_stmt = (
+                update(Channel).where(Channel.id == channel_id).values(**update_data)
+            )
+            await db.execute(update_stmt)
             await db.commit()
             await db.refresh(channel)
             logger.info(f"Channel {channel.name} updated for user {user_id}")
@@ -167,11 +173,11 @@ class ChannelsService:
         Delete a channel by ID.
         """
         # Check if the channel exists and belongs to the user
-        stmt = select(Channel).where(
+        query = select(Channel).where(
             Channel.id == channel_id,
             Channel.creator_id == user_id,
         )
-        result = await db.execute(stmt)
+        result = await db.execute(query)
         channel = result.scalar_one_or_none()
         if not channel:
             logger.warning(
@@ -179,8 +185,8 @@ class ChannelsService:
             )
             return False
         try:
-            stmt = delete(Channel).where(Channel.id == channel_id)
-            await db.execute(stmt)
+            delete_stmt = delete(Channel).where(Channel.id == channel_id)
+            await db.execute(delete_stmt)
             await db.commit()
             logger.info(f"Channel {channel.name} deleted for user {user_id}")
             return True

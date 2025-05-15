@@ -53,13 +53,13 @@ def downgrade() -> None:
     op.add_column(
         "events", sa.Column("user_id", sa.UUID(), autoincrement=False, nullable=False)
     )
-    op.drop_constraint(None, "events", type_="foreignkey")
+    op.drop_constraint("events_creator_id_fkey", "events", type_="foreignkey")
     op.create_foreign_key("events_user_id_fkey", "events", "users", ["user_id"], ["id"])
     op.drop_column("events", "creator_id")
     op.add_column(
         "channels", sa.Column("user_id", sa.UUID(), autoincrement=False, nullable=False)
     )
-    op.drop_constraint(None, "channels", type_="foreignkey")
+    op.drop_constraint("channels_creator_id_fkey", "channels", type_="foreignkey")
     op.create_foreign_key(
         "channels_user_id_fkey", "channels", "users", ["user_id"], ["id"]
     )

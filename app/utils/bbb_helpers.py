@@ -1,7 +1,7 @@
 import hashlib
 import xml.etree.ElementTree as ET
 from fastapi import HTTPException
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 
 
 def generate_checksum(call_name: str, query_params: str, shared_secret: str) -> str:
@@ -21,20 +21,22 @@ def parse_xml_response(xml_content: bytes, api_call: str) -> Dict[str, Any]:
             for child in root:
                 if child.tag == "returncode":
                     continue
-                
+
                 # Handle complex nested structures (meetings, recordings, etc.)
                 if len(child) > 0:  # Check if this element has children
                     # Handle collection elements like 'meetings', 'recordings'
-                    if all(item.tag == child.tag[:-1] for item in child):  # Check if children follow naming pattern
+                    if all(
+                        item.tag == child.tag[:-1] for item in child
+                    ):  # Check if children follow naming pattern
                         collection = []
                         for item in child:
-                            item_dict = {}
+                            item_dict: Dict[str, any] = {}
                             _extract_element_data(item, item_dict)
                             collection.append(item_dict)
                         result[child.tag] = collection
                     else:
                         # For other nested structures
-                        nested_dict = {}
+                        nested_dict: Dict[str, any] = {}
                         _extract_element_data(child, nested_dict)
                         result[child.tag] = nested_dict
                 else:
@@ -44,10 +46,11 @@ def parse_xml_response(xml_content: bytes, api_call: str) -> Dict[str, Any]:
             # Extract error messages and messageKey
             result["message"] = root.findtext("message", "Unknown error")
             result["messageKey"] = root.findtext("messageKey", "")
-            
+
         return result
     except ET.ParseError:
         raise HTTPException(status_code=500, detail="Failed to parse BBB response")
+
 
 def _extract_element_data(element: ET.Element, target_dict: Dict[str, Any]) -> None:
     """Helper function to recursively extract data from XML elements."""
@@ -58,12 +61,12 @@ def _extract_element_data(element: ET.Element, target_dict: Dict[str, Any]) -> N
             if all(item.tag == child.tag[:-1] for item in child) and len(child) > 0:
                 collection = []
                 for item in child:
-                    item_dict = {}
+                    item_dict: Dict[str, any] = {}
                     _extract_element_data(item, item_dict)
                     collection.append(item_dict)
                 target_dict[child.tag] = collection
             else:
-                nested_dict = {}
+                nested_dict: Dict[str, any] = {}
                 _extract_element_data(child, nested_dict)
                 target_dict[child.tag] = nested_dict
         else:

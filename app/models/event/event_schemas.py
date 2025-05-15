@@ -15,7 +15,6 @@ class EventBase(BaseModel):
     start_date: datetime
     end_date: datetime
     start_time: datetime
-    
 
 
 class EventCreate(EventBase):

@@ -69,6 +69,7 @@ def get_meetings():
     """Get the list of all meetings."""
     return bbb_service.get_meetings()
 
+
 @router.post("/get-recordings")
 def get_recordings(request: GetRecordingRequest = Body(...)):
     """Get the list of all recordings."""

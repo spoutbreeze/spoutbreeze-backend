@@ -160,7 +160,7 @@ async def delete_channel(
     channel_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> None:
+) -> dict:
     """
     Delete a channel by its ID.
 

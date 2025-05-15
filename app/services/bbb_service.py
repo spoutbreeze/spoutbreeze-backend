@@ -160,7 +160,7 @@ class BBBService:
         params = {
             "meetingID": request.meeting_id,
         }
-        
+
         return self._call_bbb_api("getRecordings", params)
 
     def get_join_url(
@@ -226,7 +226,6 @@ class BBBService:
     #     except Exception as e:
     #         logger.error(f"Error updating meeting: {e}")
     #         raise HTTPException(status_code=500, detail="Failed to update meeting")
-
 
     def _call_bbb_api(self, api_call: str, params: dict) -> dict:
         """Makes a call to the BBB API and returns the parsed XML response."""

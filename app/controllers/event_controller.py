@@ -97,7 +97,8 @@ async def get_event(
         return event
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
 # Get event by channel ID
 @router.get("/channel/{channel_id}", response_model=EventListResponse)
 async def get_events_by_channel(
