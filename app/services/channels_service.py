@@ -46,7 +46,9 @@ class ChannelsService:
         Get all channels for a user.
         """
         try:
-            result = await db.execute(select(Channel).where(Channel.creator_id == user_id))
+            result = await db.execute(
+                select(Channel).where(Channel.creator_id == user_id)
+            )
             channels = result.scalars().all()
             logger.info(f"Retrieved {len(channels)} channels for user {user_id}")
             return channels
@@ -88,6 +90,34 @@ class ChannelsService:
             return channels
         except Exception as e:
             logger.error(f"Error retrieving channels: {e}")
+            raise
+
+    async def get_channel_by_name(
+        self,
+        db: AsyncSession,
+        channel_name: str,
+        user_id: UUID,
+    ) -> Optional[Channel]:
+        """
+        Get a channel by its name.
+        """
+        try:
+            result = await db.execute(
+                select(Channel).where(
+                    Channel.name == channel_name,
+                    Channel.creator_id == user_id,
+                )
+            )
+            channel = result.scalar_one_or_none()
+            if channel:
+                logger.info(f"Retrieved channel {channel.name} for user {user_id}")
+            else:
+                logger.warning(
+                    f"Channel with name {channel_name} not found for user {user_id}"
+                )
+            return channel
+        except Exception as e:
+            logger.error(f"Error retrieving channel with name {channel_name}: {e}")
             raise
 
     async def update_channel(

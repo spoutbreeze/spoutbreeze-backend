@@ -52,127 +52,17 @@ jobs:
         run: |
           mypy .
 
-      - name: Create environment file
-        run: |
-          cat <<EOF > .env
-          # Keycloak configuration
-          KEYCLOAK_SERVER_URL=${{ secrets.KEYCLOAK_SERVER_URL }}
-          KEYCLOAK_REALM=${{ secrets.KEYCLOAK_REALM }}
-          KEYCLOAK_CLIENT_ID=${{ secrets.KEYCLOAK_CLIENT_ID }}
-          KEYCLOAK_CLIENT_SECRET=${{ secrets.KEYCLOAK_CLIENT_SECRET }}
+      # - name: Set up Docker Buildx
+      #   uses: docker/setup-buildx-action@v1
 
-          # BBB API configuration
-          BBB_SERVER_BASE_URL=${{ secrets.BBB_SERVER_BASE_URL }}
-          BBB_SECRET=${{ secrets.BBB_SECRET }}
-          PLUGIN_MANIFESTS_URL=${{ secrets.PLUGIN_MANIFESTS_URL }}
+      # - name: Login to Docker Hub
+      #   run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-          # Broadcaster configuration
-          BROADCASTER_API_URL=${{ secrets.BROADCASTER_API_URL }}
-
-          # Twitch configuration
-          TWITCH_SERVER=irc.chat.twitch.tv
-          TWITCH_PORT=6697
-          TWITCH_NICK=${{ secrets.TWITCH_NICK }}
-          TWITCH_TOKEN=${{ secrets.TWITCH_TOKEN }}
-          TWITCH_CHANNEL=${{ secrets.TWITCH_CHANNEL }}
-
-          # Database configuration
-          DB_URL=sqlite+aiosqlite:///./test.db
-
-          # Environment
-          ENV=development
-          EOF
-          echo "Environment file created."
-
-      - name: Setup mock modules
-        run: |
-          # Create directories for mocks and testing tools
-          mkdir -p tests/mocks
-          mkdir -p tests/tools
-          
-          # Copy mock modules
-          cp $GITHUB_WORKSPACE/.github/mocks/mock_keycloak.py tests/mocks/
-          cp $GITHUB_WORKSPACE/.github/tools/patch_imports.py tests/tools/
-          
-          # Add tests directory to Python path
-          export PYTHONPATH=$PYTHONPATH:$(pwd)
-          
-          # Print the patching script for debugging
-          echo "--- patch_imports.py content ---"
-          cat tests/tools/patch_imports.py
-          echo "--------------------------------"
-          
-          # Run the patch script to modify the app files for testing
-          python tests/tools/patch_imports.py app --verbose
-          
-          # Verify a few key files were patched correctly
-          echo "--- Checking some patched files ---"
-          grep -n "mock_keycloak" app/config/settings.py || echo "No match in settings.py"
-          grep -n "mock_keycloak" app/services/auth_service.py || echo "No match in auth_service.py"
-          echo "--------------------------------"
-
-      - name: Start FastAPI and verify it's running
-        run: |
-          # Load environment variables
-          source .env
-          
-          # Add tests directory to PYTHONPATH
-          export PYTHONPATH=$PYTHONPATH:$(pwd)
-          
-          # Verify Python path and imports
-          echo "Python path: $PYTHONPATH"
-          echo "Checking import paths:"
-          python -c "import sys; print(sys.path)"
-          echo "Checking mock module:"
-          python -c "import tests.mocks.mock_keycloak; print('Mock module found')" || echo "Failed to import mock"
-          
-          # Start server in background and capture process ID
-          python -m uvicorn app.main:app \
-            --host 127.0.0.1 \
-            --port 8000 \
-            --lifespan off \
-            --log-level debug \
-            --workers 1 \
-            --timeout-keep-alive 1 \
-            --no-access-log &> server.log &
-          SERVER_PID=$!
-          
-          echo "Server started with PID $SERVER_PID"
-          
-          # Give the server time to start
-          echo "Waiting for server to start..."
-          sleep 5
-          
-          # Function to check server health
-          check_server() {
-            curl -sSf http://127.0.0.1:8000/health 2>/dev/null || curl -sSf http://127.0.0.1:8000/ 2>/dev/null || curl -sSf http://127.0.0.1:8000/docs 2>/dev/null
-            return $?
-          }
-          
-          # Try several times to connect to the server
-          MAX_ATTEMPTS=10
-          for i in $(seq 1 $MAX_ATTEMPTS); do
-            echo "Checking server connection (attempt $i/$MAX_ATTEMPTS)..."
-            if check_server; then
-              echo "✅ Server is responsive!"
-              
-              # Run simple endpoint tests
-              echo "Testing API documentation endpoints..."
-              curl -sSf http://127.0.0.1:8000/docs > /dev/null && echo "✅ /docs endpoint works"
-              curl -sSf http://127.0.0.1:8000/redoc > /dev/null && echo "✅ /redoc endpoint works"
-              
-              # Clean up server process
-              kill $SERVER_PID 2>/dev/null || true
-              wait $SERVER_PID 2>/dev/null || true
-              exit 0
-            fi
-            sleep 2
-          done
-          
-          # If we get here, server is not responding
-          echo "::error::Server failed to respond after $MAX_ATTEMPTS attempts"
-          echo "Server logs:"
-          cat server.log
-          ps -ef | grep python
-          kill $SERVER_PID 2>/dev/null || true
-          exit 1
+      # - name: Build and push Docker image
+      #   run: |
+      #     docker buildx build \
+      #       --platform linux/amd64,linux/arm64 \
+      #       --push \
+      #       -t "${{ secrets.DOCKER_USERNAME }}/fastapi-example:${{ github.sha }}" \
+      #       -t "${{ secrets.DOCKER_USERNAME }}/fastapi-example:latest" \
+      #       .

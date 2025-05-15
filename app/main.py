@@ -3,12 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from contextlib import asynccontextmanager
+
 from app.controllers.auth_controller import router as auth_router
 from app.controllers.bbb_controller import router as bbb_router
 from app.controllers.broadcaster_controller import router as broadcaster_router
 from app.controllers.user_controller import router as user_router
 from app.controllers.stream_controller import router as stream_router
 from app.controllers.channels_controller import router as channels_router
+from app.controllers.event_controller import router as event_router
 
 from app.config.chat_manager import chat_manager
 from app.config.twitch_irc import twitch_client
@@ -130,6 +132,7 @@ async def root():
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(channels_router)
+app.include_router(event_router)
 app.include_router(stream_router)
 app.include_router(broadcaster_router)
 app.include_router(bbb_router)

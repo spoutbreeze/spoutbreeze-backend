@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
 from uuid import UUID
 
 from app.config.database.session import get_db
@@ -18,7 +17,7 @@ router = APIRouter(prefix="/api/channels", tags=["Channels"])
 channels_service = ChannelsService()
 
 
-@router.post("/create", response_model=ChannelResponse)
+@router.post("/", response_model=ChannelResponse)
 async def create_channel(
     channel_create: ChannelCreate,
     db: AsyncSession = Depends(get_db),
@@ -46,11 +45,11 @@ async def create_channel(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/all", response_model=List[ChannelResponse])
+@router.get("/all", response_model=ChannelListResponse)
 async def get_all_channels(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[ChannelResponse]:
+) -> ChannelListResponse:
     """
     Get all channels for the current user.
     Args:
@@ -61,10 +60,10 @@ async def get_all_channels(
     """
     try:
         channels = await channels_service.get_channels(
-            user_id=UUID(str(current_user.id)),
+            # user_id=UUID(str(current_user.id)),
             db=db,
         )
-        return channels
+        return ChannelListResponse(channels=channels, total=len(channels))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

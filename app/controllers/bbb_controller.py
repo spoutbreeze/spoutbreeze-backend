@@ -7,6 +7,7 @@ from app.models.bbb_schemas import (
     EndMeetingRequest,
     GetMeetingInfoRequest,
     IsMeetingRunningRequest,
+    GetRecordingRequest,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config.database.session import get_db
@@ -67,3 +68,8 @@ def get_meeting_info(request: GetMeetingInfoRequest = Body(...)):
 def get_meetings():
     """Get the list of all meetings."""
     return bbb_service.get_meetings()
+
+@router.post("/get-recordings")
+def get_recordings(request: GetRecordingRequest = Body(...)):
+    """Get the list of all recordings."""
+    return bbb_service.get_recordings(request=request)

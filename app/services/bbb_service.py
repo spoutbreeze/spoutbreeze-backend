@@ -14,6 +14,7 @@ from app.models.bbb_schemas import (
     EndMeetingRequest,
     GetMeetingInfoRequest,
     IsMeetingRunningRequest,
+    GetRecordingRequest,
 )
 from app.models.bbb_models import BbbMeeting
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -154,6 +155,14 @@ class BBBService:
         """Get the list of all meetings."""
         return self._call_bbb_api("getMeetings", {})
 
+    def get_recordings(self, request: GetRecordingRequest) -> Dict[str, Any]:
+        """Get the list of all recordings."""
+        params = {
+            "meetingID": request.meeting_id,
+        }
+        
+        return self._call_bbb_api("getRecordings", params)
+
     def get_join_url(
         self,
         request: JoinMeetingRequest,
@@ -193,6 +202,32 @@ class BBBService:
         )
         return f"{self.server_base_url}isMeetingRunning?meetingID={meeting_id}&checksum={checksum}"
 
+    # async def update_meeting_status(
+    #     self,
+    #     meeting_id: str,
+    #     db: AsyncSession,
+    # ) -> Dict[str, Any]:
+    #     """Update meeting details in the database."""
+    #     meeting_info_request = GetMeetingInfoRequest(meeting_id=meeting_id, password="")
+    #     try:
+    #         meeting_info = self.get_meeting_info(request=meeting_info_request)
+
+    #         # Find meeting in the database
+    #         stmt = select(BbbMeeting).where(BbbMeeting.meeting_id == meeting_id)
+    #         result = await db.execute(stmt)
+    #         meeting = result.scalars().first()
+
+    #         if meeting:
+    #             # Update meeting status
+    #             meeting.has_user_joined = meeting_info.get("hasUserJoined")
+    #             meeting.has_been_forcibly_ended = meeting_info.get("hasBeenForciblyEnded")
+    #             await db.commit()
+    #             logger.info(f"Meeting updated with ID: {meeting_id}")
+    #     except Exception as e:
+    #         logger.error(f"Error updating meeting: {e}")
+    #         raise HTTPException(status_code=500, detail="Failed to update meeting")
+
+
     def _call_bbb_api(self, api_call: str, params: dict) -> dict:
         """Makes a call to the BBB API and returns the parsed XML response."""
         # Create a copy to avoid modifying the original
@@ -204,9 +239,11 @@ class BBBService:
                 # Convert Pydantic models to dict first, then to JSON string
                 if isinstance(value, list):
                     plugin_dicts = [
-                        plugin.model_dump()
-                        if hasattr(plugin, "model_dump")
-                        else plugin.dict()
+                        (
+                            plugin.model_dump()
+                            if hasattr(plugin, "model_dump")
+                            else plugin.dict()
+                        )
                         for plugin in value
                     ]
                     processed_params[key] = json.dumps(plugin_dicts)

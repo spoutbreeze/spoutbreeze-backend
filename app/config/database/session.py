@@ -21,8 +21,8 @@ async def get_db():
     """
     Dependency to get the database session.
     """
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        await db.close()
+    async with SessionLocal() as db:
+        try:
+            yield db
+        finally:
+            await db.close()
