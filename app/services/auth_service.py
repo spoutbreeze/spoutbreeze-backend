@@ -85,7 +85,7 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-    def exchange_token(self, code: str, redirect_uri: str) -> dict:
+    def exchange_token(self, code: str, redirect_uri: str, code_verifier:str) -> dict:
         """
         Exchange authorization code for tokens
         """
@@ -94,6 +94,7 @@ class AuthService:
                 grant_type="authorization_code",
                 code=code,
                 redirect_uri=redirect_uri,
+                code_verifier=code_verifier,
             )
             return token
         except Exception as e:
