@@ -20,12 +20,12 @@ event_service = EventService()
 bbb_service = BBBService()
 
 
-@router.post("/", response_model=Dict[str, Any])
+@router.post("/", response_model=EventResponse)
 async def create_event(
     event_create: EventCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> EventResponse:
     """
     Create a new event for the current user.
 
@@ -48,6 +48,73 @@ async def create_event(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/{event_id}/start", response_model=Dict[str, str])
+async def start_event(
+    event_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, str]:
+    """
+    Start an event by ID for the current user.
+    Args:
+        event_id: The ID of the event to start.
+        db: The database session.
+        current_user: The current user.
+    Returns:
+        A message indicating the result of the start operation.
+    """
+    try:
+        start_result = await event_service.start_event(
+            db=db,
+            event_id=event_id,
+            user_id=UUID(str(current_user.id)),
+        )
+        if start_result:
+            return start_result
+        else:
+            raise HTTPException(status_code=400, detail="Failed to start event")
+    except ValueError as e:
+        # Handle the case where the event ID is not found
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        # Handle any other exceptions
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/{event_id}/join", response_model=Dict[str, str])
+async def join_event(
+    event_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, str]:
+    """
+    Join an event by ID for the current user.
+    Args:
+        event_id: The ID of the event to join.
+        db: The database session.
+        current_user: The current user.
+    Returns:
+        A message indicating the result of the join operation.
+    """
+    try:
+        join_result = await event_service.join_event(
+            db=db,
+            event_id=event_id,
+            user_id=UUID(str(current_user.id)),
+        )
+        if join_result:
+            return join_result
+        else:
+            raise HTTPException(status_code=400, detail="Failed to join event")
+    except HTTPException as e:
+        # Handle the case where the event ID is not found
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    except ValueError as e:
+        # Handle the case where the event ID is not found
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        # Handle any other exceptions
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/all", response_model=EventListResponse)
 async def get_all_events(
     db: AsyncSession = Depends(get_db),
@@ -66,6 +133,9 @@ async def get_all_events(
     try:
         events = await event_service.get_all_events(db=db)
         return EventListResponse(events=events, total=len(events))
+    except ValueError as e:
+        # Handle the case where no events are found
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -92,9 +162,10 @@ async def get_event(
             db=db,
             event_id=event_id,
         )
-        if not event:
-            raise HTTPException(status_code=404, detail="Event not found")
         return event
+    except ValueError as e:
+        # Handle the case where the event ID is not found
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -159,6 +230,9 @@ async def update_event(
             user_id=UUID(str(current_user.id)),
         )
         return updated_event
+    except ValueError as e:
+        # Handle the case where the event ID is not found
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

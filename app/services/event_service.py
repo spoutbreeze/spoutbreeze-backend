@@ -1,6 +1,7 @@
 from typing import List, Dict, Any
 from uuid import UUID
 
+from app.models.bbb_schemas import JoinMeetingRequest
 from app.models.user_models import User
 from app.models.event.event_models import Event
 from app.models.event.event_schemas import EventCreate, EventUpdate, EventResponse
@@ -14,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
 from app.config.logger_config import logger
+import secrets
 
 
 class EventService:
@@ -31,7 +33,7 @@ class EventService:
         db: AsyncSession,
         event: EventCreate,
         user_id: UUID,
-    ) -> Dict[str, Any]:
+    ) -> EventResponse:
         """
         Create a new event.
         """
@@ -69,6 +71,18 @@ class EventService:
             if organizers:
                 new_event.organizers.extend(organizers)
 
+            # Generate unique meeting ID and passwords
+            event_id_short = str(new_event.id).split("-")[0]
+            unique_meeting_id = f"{event_id_short}_{new_event.title.replace(' ', '_')}"[:32]
+            moderator_pw = secrets.token_urlsafe(8)
+            attendee_pw = secrets.token_urlsafe(8)
+
+            # Set the meeting ID and passwords
+            new_event.meeting_id = unique_meeting_id
+            new_event.moderator_pw = moderator_pw
+            new_event.attendee_pw = attendee_pw
+            new_event.meeting_created = False
+
             # Commit the changes
             await db.commit()
 
@@ -89,23 +103,23 @@ class EventService:
             )
 
             # Create the meeting in BBB
-            bbb_meeting = await self._create_bbb_meeting(
-                db=db,
-                event=event,
-                new_event=new_event,
-                user_id=user_id,
-            )
+            # bbb_meeting = await self._create_bbb_meeting(
+            #     db=db,
+            #     event=event,
+            #     new_event=new_event,
+            #     user_id=user_id,
+            # )
 
             # Check if meeting_id is in the response or at a different path
-            meeting_id = (
-                bbb_meeting.get("meeting_id")
-                or bbb_meeting.get("meetingID")
-                or bbb_meeting.get("id")
-                or "unknown"
-            )
+            # meeting_id = (
+            #     bbb_meeting.get("meeting_id")
+            #     or bbb_meeting.get("meetingID")
+            #     or bbb_meeting.get("id")
+            #     or "unknown"
+            # )
 
             logger.info(
-                f"User with ID {user_id} created BBB meeting with ID {meeting_id} for event {new_event.title}"
+                f"User with ID {user_id} created event {new_event.title}"
             )
 
             # Create organizers list without accessing lazy-loaded attributes
@@ -130,25 +144,135 @@ class EventService:
                 "start_date": new_event.start_date,
                 "end_date": new_event.end_date,
                 "start_time": new_event.start_time,
+                "timezone": new_event.timezone,
                 "channel_name": new_event.channel.name,
                 "creator_id": str(new_event.creator_id),
                 "organizers": organizers_list,
                 "channel_id": str(new_event.channel_id),
-                "meeting_id": meeting_id,
+                "meeting_id": unique_meeting_id,
+                "attendee_pw": attendee_pw,
+                "moderator_pw": moderator_pw,
                 "created_at": new_event.created_at,
                 "updated_at": new_event.updated_at,
+                "meeting_created": new_event.meeting_created,
             }
 
             # Convert to EventResponse
             event_response = EventResponse.model_validate(event_dict)
 
-            return {
-                "event": event_response,
-                "bbb_meeting": bbb_meeting,
-            }
+            # return {
+            #     "event": event_response,
+            #     "bbb_meeting": bbb_meeting,
+            # }
+            return event_response
         except Exception as e:
             logger.error(f"Error creating event: {e}")
             await db.rollback()
+            raise
+
+    async def start_event(
+        self,
+        db: AsyncSession,
+        event_id: UUID,
+        user_id: UUID,
+    ) -> Dict[str, str]:
+        """
+        Start an event by ID.
+        """
+        try:
+            # Check if the event exists
+            select_stmt = (
+                select(Event)
+                .options(
+                    selectinload(Event.organizers),
+                    selectinload(Event.channel),
+                    selectinload(Event.creator),
+                )
+                .where(Event.id == event_id, Event.creator_id == user_id)
+            )
+            result = await db.execute(select_stmt)
+            event = result.scalars().first()
+            if not event:
+                raise ValueError(
+                    f"Event with ID {event_id} does not exist or does not belong to user {user_id}."
+                )
+            
+            if not event.meeting_created:
+                # Create the meeting in BBB
+                bbb_meeting = await self._create_bbb_meeting(
+                    db=db,
+                    event=event,
+                    new_event=event,
+                    user_id=user_id,
+                )
+
+                # Update the event with meeting details
+                event.meeting_created = True
+                await db.commit()
+                await db.refresh(event)
+                logger.info(
+                    f"Event {event.title} started for user {user_id} in channel {event.channel.name}"
+                )
+            
+            join_request = JoinMeetingRequest(
+                meeting_id=event.meeting_id,
+                password=event.moderator_pw,
+                full_name=event.creator.first_name,
+            )
+            join_url = self.bbb_service.get_join_url(request=join_request)
+            logger.info(
+                f"Join URL for event {event.title} is {join_url}"
+            )
+            return {"join_url": join_url}
+        except Exception as e:
+            logger.error(f"Error starting event with ID {event_id}: {e}")
+            await db.rollback()
+            raise
+
+    async def join_event(
+        self,
+        db: AsyncSession,
+        event_id: UUID,
+        user_id: UUID,
+    ) -> Dict[str, str]:
+        """
+        Join an event by ID.
+        """
+        try:
+            # Check if the event exists
+            select_stmt = (
+                select(Event)
+                .options(
+                    selectinload(Event.organizers),
+                    selectinload(Event.channel),
+                    selectinload(Event.creator),
+                )
+                .where(Event.id == event_id)
+            )
+            result = await db.execute(select_stmt)
+            event = result.scalars().first()
+            if not event:
+                raise ValueError(f"Event with ID {event_id} does not exist.")
+
+            attendee_join_request = JoinMeetingRequest(
+                meeting_id=event.meeting_id,
+                password=event.attendee_pw,
+                full_name=event.creator.first_name,
+            )
+            moderator_join_request = JoinMeetingRequest(
+                meeting_id=event.meeting_id,
+                password=event.moderator_pw,
+                full_name=event.creator.first_name,
+            )
+
+            attendee_join_url = self.bbb_service.get_join_url(request=attendee_join_request)
+            moderator_join_url = self.bbb_service.get_join_url(request=moderator_join_request)
+            return {
+                "attendee_join_url": attendee_join_url,
+                "moderator_join_url": moderator_join_url,
+            }
+        except Exception as e:
+            logger.error(f"Error joining event with ID {event_id}: {e}")
             raise
 
     async def get_event_by_id(
@@ -215,6 +339,14 @@ class EventService:
         Get events by channel ID.
         """
         try:
+            # Check if the channel exists
+            channel = await self.channel_service.get_channel_by_id(
+                db=db,
+                channel_id=channel_id,
+            )
+            if not channel:
+                raise ValueError(f"Channel with ID {channel_id} does not exist.")
+            
             result = await db.execute(
                 select(Event)
                 .options(

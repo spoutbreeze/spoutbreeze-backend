@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, DateTime, ForeignKey
+from sqlalchemy import String, DateTime, ForeignKey, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.config.database.session import Base
@@ -23,7 +23,7 @@ class Event(Base):
         index=True,
         nullable=False,
     )
-    title: Mapped[str] = mapped_column(String, nullable=False)
+    title: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     occurs: Mapped[str] = mapped_column(String, nullable=False)
     start_date: Mapped[datetime] = mapped_column(
@@ -33,6 +33,7 @@ class Event(Base):
     start_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+    timezone: Mapped[str] = mapped_column(String, nullable=False, default="UTC")
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now(), nullable=False
     )
@@ -45,6 +46,16 @@ class Event(Base):
     )
     channel_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("channels.id"), nullable=False
+    )
+    meeting_id: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
+    moderator_pw: Mapped[str | None] = mapped_column(
+        String, nullable=True, unique=True
+    )
+    attendee_pw: Mapped[str | None] = mapped_column(
+        String, nullable=True, unique=True
+    )
+    meeting_created: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
     )
 
     # Use string references instead of direct class references

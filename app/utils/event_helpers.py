@@ -34,6 +34,7 @@ class EventHelpers:
             start_date=start_date,
             end_date=end_date,
             start_time=start_time,
+            timezone=event.timezone,
             creator_id=user_id,
             channel_id=channel_id,
         )
@@ -48,15 +49,15 @@ class EventHelpers:
         Prepare BBB meeting request data.
         """
         # Use a unique meeting ID to prevent duplicates
-        event_id_short = str(new_event.id).split("-")[0]
-        unique_meeting_id = f"{event_id_short}_{event.title.replace(' ', '_')}"[:32]
+        # event_id_short = str(new_event.id).split("-")[0]
+        # unique_meeting_id = f"{event_id_short}_{event.title.replace(' ', '_')}"[:32]
 
         # Create the meeting request
         meeting_request = CreateMeetingRequest(
             name=event.title,
-            meeting_id=unique_meeting_id,
-            attendee_pw=event.attendee_pw,
-            moderator_pw=event.moderator_pw,
+            meeting_id=new_event.meeting_id,
+            attendee_pw=new_event.attendee_pw,
+            moderator_pw=new_event.moderator_pw,
             welcome=f"Welcome to {event.title}",
         )
         return meeting_request

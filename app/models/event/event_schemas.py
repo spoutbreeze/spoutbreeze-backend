@@ -15,6 +15,7 @@ class EventBase(BaseModel):
     start_date: datetime
     end_date: datetime
     start_time: datetime
+    timezone: str = "UTC"
 
 
 class EventCreate(EventBase):
@@ -22,9 +23,6 @@ class EventCreate(EventBase):
     Create model for event
     """
 
-    meeting_id: Optional[str] = None
-    attendee_pw: Optional[str] = None
-    moderator_pw: Optional[str] = None
     organizer_ids: Optional[List[UUID]] = []
     channel_name: str
 
@@ -42,6 +40,7 @@ class EventUpdate(BaseModel):
     start_time: Optional[datetime] = None
     organizer_ids: Optional[List[UUID]] = None
     channel_id: Optional[UUID] = None
+    timezone: Optional[str] = None
 
 
 class OrganizerResponse(BaseModel):
@@ -70,6 +69,10 @@ class EventResponse(EventBase):
     organizers: List[OrganizerResponse] = []
     channel_id: UUID
     meeting_id: Optional[str] = None
+    attendee_pw: Optional[str] = None
+    moderator_pw: Optional[str] = None
+    meeting_created: bool
+    timezone: str
     created_at: datetime
     updated_at: datetime
 
