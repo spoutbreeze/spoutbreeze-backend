@@ -48,12 +48,8 @@ class Event(Base):
         UUID(as_uuid=True), ForeignKey("channels.id"), nullable=False
     )
     meeting_id: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
-    moderator_pw: Mapped[str | None] = mapped_column(
-        String, nullable=True, unique=True
-    )
-    attendee_pw: Mapped[str | None] = mapped_column(
-        String, nullable=True, unique=True
-    )
+    moderator_pw: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
+    attendee_pw: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
     meeting_created: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False
     )

@@ -48,10 +48,6 @@ class EventHelpers:
         """
         Prepare BBB meeting request data.
         """
-        # Use a unique meeting ID to prevent duplicates
-        # event_id_short = str(new_event.id).split("-")[0]
-        # unique_meeting_id = f"{event_id_short}_{event.title.replace(' ', '_')}"[:32]
-
         # Create the meeting request
         meeting_request = CreateMeetingRequest(
             name=event.title,

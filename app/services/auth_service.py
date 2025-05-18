@@ -85,7 +85,7 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-    def exchange_token(self, code: str, redirect_uri: str, code_verifier:str) -> dict:
+    def exchange_token(self, code: str, redirect_uri: str, code_verifier: str) -> dict:
         """
         Exchange authorization code for tokens
         """

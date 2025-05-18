@@ -64,7 +64,9 @@ async def exchange_token(request: TokenRequest, db: AsyncSession = Depends(get_d
         Access token, refresh token and other token information
     """
     try:
-        token_data = auth_service.exchange_token(request.code, request.redirect_uri, request.code_verifier)
+        token_data = auth_service.exchange_token(
+            request.code, request.redirect_uri, request.code_verifier
+        )
 
         # Extract the access token
         access_token = token_data.get("access_token")

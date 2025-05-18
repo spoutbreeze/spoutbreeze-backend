@@ -72,8 +72,9 @@ class EventService:
                 new_event.organizers.extend(organizers)
 
             # Generate unique meeting ID and passwords
-            event_id_short = str(new_event.id).split("-")[0]
-            unique_meeting_id = f"{event_id_short}_{new_event.title.replace(' ', '_')}"[:32]
+            unique_meeting_id = new_event.title.replace(" ", "_")[:32]
+            random_suffix = secrets.token_hex(4)
+            unique_meeting_id = f"{unique_meeting_id}_{random_suffix}"
             moderator_pw = secrets.token_urlsafe(8)
             attendee_pw = secrets.token_urlsafe(8)
 
@@ -102,25 +103,7 @@ class EventService:
                 f"Event {new_event.title} created for user {user_id} in channel {channel.name}"
             )
 
-            # Create the meeting in BBB
-            # bbb_meeting = await self._create_bbb_meeting(
-            #     db=db,
-            #     event=event,
-            #     new_event=new_event,
-            #     user_id=user_id,
-            # )
-
-            # Check if meeting_id is in the response or at a different path
-            # meeting_id = (
-            #     bbb_meeting.get("meeting_id")
-            #     or bbb_meeting.get("meetingID")
-            #     or bbb_meeting.get("id")
-            #     or "unknown"
-            # )
-
-            logger.info(
-                f"User with ID {user_id} created event {new_event.title}"
-            )
+            logger.info(f"User with ID {user_id} created event {new_event.title}")
 
             # Create organizers list without accessing lazy-loaded attributes
             organizers_list = []
@@ -159,11 +142,6 @@ class EventService:
 
             # Convert to EventResponse
             event_response = EventResponse.model_validate(event_dict)
-
-            # return {
-            #     "event": event_response,
-            #     "bbb_meeting": bbb_meeting,
-            # }
             return event_response
         except Exception as e:
             logger.error(f"Error creating event: {e}")
@@ -196,7 +174,7 @@ class EventService:
                 raise ValueError(
                     f"Event with ID {event_id} does not exist or does not belong to user {user_id}."
                 )
-            
+
             if not event.meeting_created:
                 # Create the meeting in BBB
                 bbb_meeting = await self._create_bbb_meeting(
@@ -213,16 +191,14 @@ class EventService:
                 logger.info(
                     f"Event {event.title} started for user {user_id} in channel {event.channel.name}"
                 )
-            
+
             join_request = JoinMeetingRequest(
                 meeting_id=event.meeting_id,
                 password=event.moderator_pw,
                 full_name=event.creator.first_name,
             )
             join_url = self.bbb_service.get_join_url(request=join_request)
-            logger.info(
-                f"Join URL for event {event.title} is {join_url}"
-            )
+            logger.info(f"Join URL for event {event.title} is {join_url}")
             return {"join_url": join_url}
         except Exception as e:
             logger.error(f"Error starting event with ID {event_id}: {e}")
@@ -265,8 +241,12 @@ class EventService:
                 full_name=event.creator.first_name,
             )
 
-            attendee_join_url = self.bbb_service.get_join_url(request=attendee_join_request)
-            moderator_join_url = self.bbb_service.get_join_url(request=moderator_join_request)
+            attendee_join_url = self.bbb_service.get_join_url(
+                request=attendee_join_request
+            )
+            moderator_join_url = self.bbb_service.get_join_url(
+                request=moderator_join_request
+            )
             return {
                 "attendee_join_url": attendee_join_url,
                 "moderator_join_url": moderator_join_url,
@@ -346,7 +326,7 @@ class EventService:
             )
             if not channel:
                 raise ValueError(f"Channel with ID {channel_id} does not exist.")
-            
+
             result = await db.execute(
                 select(Event)
                 .options(

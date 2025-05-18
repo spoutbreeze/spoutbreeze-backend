@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Dict, Any
+from typing import Dict
 from uuid import UUID
 
 from app.config.database.session import get_db
@@ -79,7 +79,8 @@ async def start_event(
     except Exception as e:
         # Handle any other exceptions
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
 @router.post("/{event_id}/join", response_model=Dict[str, str])
 async def join_event(
     event_id: UUID,
@@ -114,6 +115,7 @@ async def join_event(
     except Exception as e:
         # Handle any other exceptions
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/all", response_model=EventListResponse)
 async def get_all_events(
