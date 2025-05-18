@@ -11,6 +11,9 @@ class TokenRequest(BaseModel):
     redirect_uri: str = Field(
         ..., description="Redirect URI used in the authorization request"
     )
+    code_verifier: str = Field(
+        ..., description="Code verifier used in the authorization request"
+    )
 
 
 class TokenResponse(BaseModel):
