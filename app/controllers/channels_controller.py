@@ -40,7 +40,11 @@ async def create_channel(
             user_id=UUID(str(current_user.id)),
             db=db,
         )
+        if not new_channel:
+            raise HTTPException(status_code=400, detail="Channel creation failed")
         return new_channel
+    except HTTPException as failed:
+        raise failed
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -63,7 +67,11 @@ async def get_all_channels(
             # user_id=UUID(str(current_user.id)),
             db=db,
         )
+        if not channels:
+            raise HTTPException(status_code=404, detail="No channels found")
         return ChannelListResponse(channels=channels, total=len(channels))
+    except HTTPException as not_found:
+        raise not_found
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -88,7 +96,11 @@ async def get_channels_by_user(
             user_id=UUID(str(current_user.id)),
             db=db,
         )
+        if not channels:
+            raise HTTPException(status_code=404, detail="No channels found")
         return ChannelListResponse(channels=channels, total=len(channels))
+    except HTTPException as not_found:
+        raise not_found
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -118,6 +130,8 @@ async def get_channel_by_id(
         if not channel:
             raise HTTPException(status_code=404, detail="Channel not found")
         return channel
+    except HTTPException as not_found:
+        raise not_found
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -151,6 +165,8 @@ async def update_channel(
         if not updated_channel:
             raise HTTPException(status_code=404, detail="Channel not found")
         return updated_channel
+    except HTTPException as not_found:
+        raise not_found
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
