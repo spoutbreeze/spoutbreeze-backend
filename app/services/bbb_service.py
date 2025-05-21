@@ -55,6 +55,9 @@ class BBBService:
             "moderatorOnlyMessage": request.moderator_only_message,
             "logo": request.logo_url,
             "pluginManifests": request.pluginManifests,
+            # Add call back url for meeting end
+            "meta_endCallbackUrl": f"{self.settings.api_base_url}/api/bbb/callback/meeting-ended",
+            # "meta_endCallbackUrl": "https://1f40-41-226-7-27.ngrok-free.app/api/bbb/callback/meeting-ended",
         }
 
         # Remove None values
@@ -133,11 +136,25 @@ class BBBService:
         else:
             return {"join_url": join_url}
 
-    async def end_meeting(self, request: EndMeetingRequest) -> Dict[str, Any]:
-        """End a BBB meeting."""
+    async def end_meeting(self, request: EndMeetingRequest, db: AsyncSession) -> Dict[str, Any]:
+        """End a BBB meeting and update database."""
         params = {"meetingID": request.meeting_id, "password": request.password}
-
-        return self._call_bbb_api("end", params)
+        
+        # Call BBB API to end the meeting
+        response = self._call_bbb_api("end", params)
+        
+        if response.get("returncode") == "SUCCESS":
+            # Update the meeting in the database
+            stmt = select(BbbMeeting).where(BbbMeeting.meeting_id == request.meeting_id)
+            result = await db.execute(stmt)
+            meeting = result.scalars().first()
+            
+            if meeting:
+                meeting.has_been_forcibly_ended = "true"
+                await db.commit()
+                logger.info(f"Meeting ended and database updated: {request.meeting_id}")
+        
+        return response
 
     def is_meeting_running(self, request: IsMeetingRunningRequest) -> Dict[str, Any]:
         """Check if a meeting is running."""
@@ -147,8 +164,11 @@ class BBBService:
 
     def get_meeting_info(self, request: GetMeetingInfoRequest) -> Dict[str, Any]:
         """Get detailed information about a meeting."""
-        params = {"meetingID": request.meeting_id, "password": request.password}
-
+        if request.password:
+            params = {"meetingID": request.meeting_id, "password": request.password}
+        else:
+            params = {"meetingID": request.meeting_id}
+            
         return self._call_bbb_api("getMeetingInfo", params)
 
     def get_meetings(self) -> Dict[str, Any]:
@@ -202,30 +222,83 @@ class BBBService:
         )
         return f"{self.server_base_url}isMeetingRunning?meetingID={meeting_id}&checksum={checksum}"
 
-    # async def update_meeting_status(
-    #     self,
-    #     meeting_id: str,
-    #     db: AsyncSession,
-    # ) -> Dict[str, Any]:
-    #     """Update meeting details in the database."""
-    #     meeting_info_request = GetMeetingInfoRequest(meeting_id=meeting_id, password="")
-    #     try:
-    #         meeting_info = self.get_meeting_info(request=meeting_info_request)
+    async def update_meeting_status(
+        self,
+        meeting_id: str,
+        db: AsyncSession,
+        is_ended: bool = False,
+    ) -> Dict[str, Any]:
+        """Update meeting details in the database."""
+        try:
+            # Find meeting in the database
+            stmt = select(BbbMeeting).where(BbbMeeting.meeting_id == meeting_id)
+            result = await db.execute(stmt)
+            meeting = result.scalars().first()
 
-    #         # Find meeting in the database
-    #         stmt = select(BbbMeeting).where(BbbMeeting.meeting_id == meeting_id)
-    #         result = await db.execute(stmt)
-    #         meeting = result.scalars().first()
+            if not meeting:
+                logger.warning(f"Meeting not found in database: {meeting_id}")
+                return {"success": False, "error": "Meeting not found in database"}
 
-    #         if meeting:
-    #             # Update meeting status
-    #             meeting.has_user_joined = meeting_info.get("hasUserJoined")
-    #             meeting.has_been_forcibly_ended = meeting_info.get("hasBeenForciblyEnded")
-    #             await db.commit()
-    #             logger.info(f"Meeting updated with ID: {meeting_id}")
-    #     except Exception as e:
-    #         logger.error(f"Error updating meeting: {e}")
-    #         raise HTTPException(status_code=500, detail="Failed to update meeting")
+            # If we know the meeting has ended (from callback), update directly
+            if is_ended:
+                meeting.has_been_forcibly_ended = "true"
+                await db.commit()
+                logger.info(f"Meeting marked as ended via callback: {meeting_id}")
+                return {"success": True}
+
+            # Try to get info from BBB API
+            try:
+                meeting_info_request = GetMeetingInfoRequest(meeting_id=meeting_id, password="")
+                meeting_info = self.get_meeting_info(request=meeting_info_request)
+
+                # Update meeting status fields
+                meeting.has_user_joined = meeting_info.get("hasUserJoined", meeting.has_user_joined)
+                meeting.has_been_forcibly_ended = meeting_info.get("hasBeenForciblyEnded", meeting.has_been_forcibly_ended)
+                await db.commit()
+                logger.info(f"Meeting updated with fresh info from BBB API: {meeting_id}")
+                return {"success": True}
+                
+            except HTTPException as e:
+                # Handle case when meeting doesn't exist in BBB anymore
+                if "notFound" in str(e.detail):
+                    # Meeting has likely ended
+                    meeting.has_been_forcibly_ended = "true"
+                    await db.commit()
+                    logger.info(f"Meeting not found in BBB, marked as ended: {meeting_id}")
+                    return {"success": True, "message": "Meeting marked as ended (not found in BBB)"}
+                else:
+                    # Some other API error
+                    logger.error(f"BBB API error: {e}")
+                    return {"success": False, "error": f"BBB API error: {str(e)}"}
+                    
+        except Exception as e:
+            logger.error(f"Error updating meeting status: {e}")
+            return {"success": False, "error": str(e)}
+        
+    async def meeting_ended_callback(
+        self,
+        meeting_id: str,
+        db: AsyncSession,
+    ) -> Dict[str, Any]:
+        """Callback endpoint for when a BBB meeting ends."""
+        try:
+            # Use the update_meeting_status method with is_ended=True flag
+            result = await self.update_meeting_status(
+                meeting_id=meeting_id,
+                db=db,
+                is_ended=True
+            )
+            
+            if result.get("success"):
+                logger.info(f"Meeting ended callback processed successfully: {meeting_id}")
+                return {"success": True, "message": "Meeting marked as ended"}
+            else:
+                logger.warning(f"Failed to process meeting end callback: {result.get('error')}")
+                return result
+                
+        except Exception as e:
+            logger.error(f"Error processing meeting end callback: {e}")
+            return {"success": False, "error": str(e)}
 
     def _call_bbb_api(self, api_call: str, params: dict) -> dict:
         """Makes a call to the BBB API and returns the parsed XML response."""
@@ -262,6 +335,7 @@ class BBBService:
         full_url = (
             f"{self.server_base_url}{api_call}?{query_string}&checksum={checksum}"
         )
+        logger.debug(f"BBB API URL: {full_url}")
 
         # Make the API call
         response = requests.get(full_url)

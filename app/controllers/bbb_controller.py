@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, Request
 
 from app.services.bbb_service import BBBService
 from app.models.bbb_schemas import (
@@ -46,9 +46,12 @@ def join_meeting(request: JoinMeetingRequest = Body(...)):
 
 
 @router.post("/end")
-async def end_meeting(request: EndMeetingRequest = Body(...)):
+async def end_meeting(
+    request: EndMeetingRequest = Body(...),
+    db: AsyncSession = Depends(get_db)
+):
     """End a BBB meeting."""
-    result = await bbb_service.end_meeting(request=request)
+    result = await bbb_service.end_meeting(request=request, db=db)
     return result
 
 
@@ -74,3 +77,20 @@ def get_meetings():
 def get_recordings(request: GetRecordingRequest = Body(...)):
     """Get the list of all recordings."""
     return bbb_service.get_recordings(request=request)
+
+@router.get("/callback/meeting-ended")
+async def meeting_ended_callback(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """Callback endpoint for when a BBB meeting ends."""
+    try:
+        params = dict(request.query_params)
+        meeting_id = params.get("meetingID")
+        if not meeting_id:
+            return {"error": "Missing meetingID in query parameters"}
+
+        result = await bbb_service.meeting_ended_callback(meeting_id=meeting_id, db=db)
+        return result
+    except Exception as e:
+        return {"error": str(e)}

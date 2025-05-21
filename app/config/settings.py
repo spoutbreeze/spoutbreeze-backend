@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 from keycloak import KeycloakOpenID, KeycloakAdmin
+import os
 
 
 class Settings(BaseSettings):
@@ -32,6 +33,9 @@ class Settings(BaseSettings):
 
     # Environment settings
     env: str = "development"
+
+    # Api base url
+    api_base_url: str = os.getenv("API_BASE_URL", "http://localhost:8000")
 
     class Config:
         env_file = ".env"
