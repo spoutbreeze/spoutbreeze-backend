@@ -192,6 +192,11 @@ class EventService:
                     f"Event {event.title} started for user {user_id} in channel {event.channel.name}"
                 )
 
+            if not event.meeting_id or not event.moderator_pw:
+                raise ValueError(
+                    f"Event with ID {event_id} does not have a valid meeting ID or moderator password."
+                )
+
             join_request = JoinMeetingRequest(
                 meeting_id=event.meeting_id,
                 password=event.moderator_pw,
@@ -229,6 +234,11 @@ class EventService:
             event = result.scalars().first()
             if not event:
                 raise ValueError(f"Event with ID {event_id} does not exist.")
+
+            if not event.meeting_id or not event.attendee_pw or not event.moderator_pw:
+                raise ValueError(
+                    f"Event with ID {event_id} does not have a valid meeting ID or passwords."
+                )
 
             attendee_join_request = JoinMeetingRequest(
                 meeting_id=event.meeting_id,

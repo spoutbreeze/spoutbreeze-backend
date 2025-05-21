@@ -90,11 +90,15 @@ class AuthService:
         Exchange authorization code for tokens
         """
         try:
+            token_params = {
+                "code_verifier": code_verifier,
+            }
+
             token = keycloak_openid.token(
                 grant_type="authorization_code",
                 code=code,
                 redirect_uri=redirect_uri,
-                code_verifier=code_verifier,
+                **token_params,
             )
             return token
         except Exception as e:

@@ -152,7 +152,7 @@ class BBBService:
             meeting = result.scalars().first()
 
             if meeting:
-                meeting.has_been_forcibly_ended = "true"
+                setattr(meeting, "has_been_forcibly_ended", "true")
                 await db.commit()
                 logger.info(f"Meeting ended and database updated: {request.meeting_id}")
 
@@ -243,7 +243,7 @@ class BBBService:
 
             # If we know the meeting has ended (from callback), update directly
             if is_ended:
-                meeting.has_been_forcibly_ended = "true"
+                setattr(meeting, "has_been_forcibly_ended", "true")
                 await db.commit()
                 logger.info(f"Meeting marked as ended via callback: {meeting_id}")
                 return {"success": True}
@@ -272,7 +272,7 @@ class BBBService:
                 # Handle case when meeting doesn't exist in BBB anymore
                 if "notFound" in str(e.detail):
                     # Meeting has likely ended
-                    meeting.has_been_forcibly_ended = "true"
+                    setattr(meeting, "has_been_forcibly_ended", "true")
                     await db.commit()
                     logger.info(
                         f"Meeting not found in BBB, marked as ended: {meeting_id}"
