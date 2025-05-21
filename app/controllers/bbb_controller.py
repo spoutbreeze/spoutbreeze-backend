@@ -47,8 +47,7 @@ def join_meeting(request: JoinMeetingRequest = Body(...)):
 
 @router.post("/end")
 async def end_meeting(
-    request: EndMeetingRequest = Body(...),
-    db: AsyncSession = Depends(get_db)
+    request: EndMeetingRequest = Body(...), db: AsyncSession = Depends(get_db)
 ):
     """End a BBB meeting."""
     result = await bbb_service.end_meeting(request=request, db=db)
@@ -78,11 +77,9 @@ def get_recordings(request: GetRecordingRequest = Body(...)):
     """Get the list of all recordings."""
     return bbb_service.get_recordings(request=request)
 
+
 @router.get("/callback/meeting-ended")
-async def meeting_ended_callback(
-    request: Request,
-    db: AsyncSession = Depends(get_db)
-):
+async def meeting_ended_callback(request: Request, db: AsyncSession = Depends(get_db)):
     """Callback endpoint for when a BBB meeting ends."""
     try:
         params = dict(request.query_params)

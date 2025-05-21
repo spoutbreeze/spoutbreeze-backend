@@ -177,7 +177,7 @@ class EventService:
 
             if not event.meeting_created:
                 # Create the meeting in BBB
-                bbb_meeting = await self._create_bbb_meeting(
+                await self._create_bbb_meeting(  # noqa: E401
                     db=db,
                     event=event,
                     new_event=event,
