@@ -98,7 +98,7 @@ class AuthService:
                 grant_type="authorization_code",
                 code=code,
                 redirect_uri=redirect_uri,
-                **token_params,
+                extra=token_params,
             )
             return token
         except Exception as e:
