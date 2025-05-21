@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, Depends, Request
+from fastapi import APIRouter, Body, Depends, Request, BackgroundTasks
 
 from app.services.bbb_service import BBBService
 from app.models.bbb_schemas import (
@@ -91,3 +91,20 @@ async def meeting_ended_callback(request: Request, db: AsyncSession = Depends(ge
         return result
     except Exception as e:
         return {"error": str(e)}
+
+@router.post("/maintenance/cleanup-old-meetings")
+async def cleanup_old_meetings(
+    days: int = 30,
+    background_tasks: BackgroundTasks = None,
+):
+    """
+    Cleanup old meetings that are older than the specified number of days.
+    This is a background task that runs asynchronously.
+    """
+    if background_tasks:
+        background_tasks.add_task(bbb_service._clean_up_meetings_background, days=days)
+        return {"message": f"Cleanup task for meetings older than {days} days has been started."}
+    else:
+        await bbb_service._clean_up_meetings_background(days=days)
+        return {"message": f"Cleanup task for meetings older than {days} days has been completed."}
+    

@@ -3,7 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from contextlib import asynccontextmanager
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 
+from app.services.bbb_service import BBBService
 from app.controllers.auth_controller import router as auth_router
 from app.controllers.bbb_controller import router as bbb_router
 from app.controllers.broadcaster_controller import router as broadcaster_router
@@ -20,7 +23,8 @@ import asyncio
 
 logger = get_logger("Twitch")
 setting = get_settings()
-
+scheduler = AsyncIOScheduler()
+bbb_service = BBBService()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -57,7 +61,20 @@ async def lifespan(app: FastAPI):
     task = asyncio.create_task(twitch_client.connect())
     logger.info("[TwitchIRC] Background connect task scheduled")
 
-    yield  # your app is running
+    # Set up scheduler for bbb meeting cleanup
+    scheduler.add_job(
+        bbb_service._clean_up_meetings_background,
+        trigger=CronTrigger(hour="3", minute="0"), # Every day at 3 AM
+        id="bbb_meeting_cleanup_job",
+        name="BBB Meeting Cleanup Job",
+        replace_existing=True,
+        misfire_grace_time=3600,  # 1 hour
+        kwargs={"days": 30},
+    )
+    scheduler.start()
+    logger.info("[Scheduler] BBB meeting cleanup job scheduled")
+
+    yield  # App is running
 
     # Shutdown: cancel the IRC task
     task.cancel()

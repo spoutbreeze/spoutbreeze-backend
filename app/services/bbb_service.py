@@ -5,6 +5,8 @@ from urllib.parse import urlencode
 from typing import Dict, Any, Union
 from fastapi import HTTPException
 from fastapi.responses import RedirectResponse
+from datetime import datetime, timedelta
+
 
 from app.config.settings import get_settings
 from app.utils.bbb_helpers import parse_xml_response, generate_checksum
@@ -363,3 +365,41 @@ class BBBService:
 
         # Parse XML response
         return parse_xml_response(response.content, api_call)
+
+    async def _clean_up_meetings(
+        self,
+        db: AsyncSession,
+        days: int = 30,
+    ):
+        """Clean up meetings that have ended."""
+        try:
+            cutoff_date = datetime.now() - timedelta(days=days)
+            cutoff_timestamp = str(int(cutoff_date.timestamp()))
+
+            # Query to find meetings older than the cutoff date
+            stmt = select(BbbMeeting).where(BbbMeeting.create_time < cutoff_timestamp)
+            result = await db.execute(stmt)
+            meetings = result.scalars().all()
+
+            count = 0
+            for meeting in meetings:
+                # Delete the meeting from the database
+                await db.delete(meeting)
+                count += 1
+
+            await db.commit()
+            logger.info(f"Cleaned up {count} old meetings from the database.")
+
+            return {"success": True, "message": f"Cleaned up {count} old meetings."}
+        except Exception as e:
+            logger.error(f"Error during cleanup: {e}")
+            return {"success": False, "error": str(e)}
+        
+    
+    async def _clean_up_meetings_background(self, days: int = 30):
+        """Background task with its own DB session."""
+        from app.config.database.session import engine
+        
+        async with AsyncSession(engine) as db:
+            await self._clean_up_meetings(days=days, db=db)
+            await db.commit()

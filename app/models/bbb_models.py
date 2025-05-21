@@ -1,33 +1,48 @@
-from sqlalchemy import Column, String, ForeignKey
-from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID
+from datetime import datetime
+from typing import TYPE_CHECKING
 import uuid
+from typing import Optional, List
+from sqlalchemy import String, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.postgresql import UUID
 from app.config.database.session import Base
 
+if TYPE_CHECKING:
+    from app.models.user_models import User
 
 class BbbMeeting(Base):
     __tablename__ = "bbb_meetings"
 
-    id = Column(
+    id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
         index=True,
         nullable=False,
     )
-    meeting_id = Column(String, unique=True, index=True, nullable=False)
-    internal_meeting_id = Column(String, unique=True, index=True, nullable=False)
-    parent_meeting_id = Column(String, index=True)
-    attendee_pw = Column(String, index=True, nullable=False)
-    moderator_pw = Column(String, index=True, nullable=False)
-    create_time = Column(String, index=True)
-    voice_bridge = Column(String, index=True)
-    dial_number = Column(String, index=True)
-    has_user_joined = Column(String, index=True)
-    duration = Column(String, index=True)
-    has_been_forcibly_ended = Column(String, index=True)
-    message_key = Column(String, index=True)
-    message = Column(String, index=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    meeting_id: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
+    internal_meeting_id: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
+    parent_meeting_id: Mapped[Optional[str]] = mapped_column(String, index=True)
+    attendee_pw: Mapped[str] = mapped_column(String, index=True, nullable=False)
+    moderator_pw: Mapped[str] = mapped_column(String, index=True, nullable=False)
+    create_time: Mapped[Optional[str]] = mapped_column(String, index=True)
+    voice_bridge: Mapped[Optional[str]] = mapped_column(String, index=True)
+    dial_number: Mapped[Optional[str]] = mapped_column(String, index=True)
+    has_user_joined: Mapped[Optional[str]] = mapped_column(String, index=True)
+    duration: Mapped[Optional[str]] = mapped_column(String, index=True)
+    has_been_forcibly_ended: Mapped[Optional[str]] = mapped_column(String, index=True)
+    message_key: Mapped[Optional[str]] = mapped_column(String, index=True)
+    message: Mapped[Optional[str]] = mapped_column(String, index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), 
+        ForeignKey("users.id"), 
+        nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        default=datetime.now, 
+        onupdate=datetime.now, 
+        nullable=False
+    )
 
-    user = relationship("User", back_populates="bbb_meetings")
+    user: Mapped["User"] = relationship("User", back_populates="bbb_meetings")
