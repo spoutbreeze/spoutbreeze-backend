@@ -374,10 +374,8 @@ class BBBService:
         """Clean up meetings that have ended."""
         try:
             cutoff_date = datetime.now() - timedelta(days=days)
-            cutoff_timestamp = str(int(cutoff_date.timestamp()))
 
-            # Query to find meetings older than the cutoff date
-            stmt = select(BbbMeeting).where(BbbMeeting.create_time < cutoff_timestamp)
+            stmt = select(BbbMeeting).where(BbbMeeting.created_at < cutoff_date)
             result = await db.execute(stmt)
             meetings = result.scalars().all()
 
