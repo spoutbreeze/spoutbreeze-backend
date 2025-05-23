@@ -156,3 +156,18 @@ class AuthService:
                 detail="Failed to get user info",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+
+    def logout(self, refresh_token: str) -> None:
+        """
+        Logout the user by invalidating the refresh token
+        """
+        try:
+            keycloak_openid.logout(refresh_token=refresh_token)
+            logger.info("User logged out successfully")
+        except Exception as e:
+            logger.error(f"Failed to logout: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to logout",
+                headers={"WWW-Authenticate": "Bearer"},
+            )

@@ -9,6 +9,7 @@ from app.models.auth_models import (
     TokenRequest,
     TokenResponse,
     RefreshTokenRequest,
+    LogoutRequest,
 )
 from app.config.settings import keycloak_openid, get_settings
 from app.config.database.session import get_db
@@ -209,3 +210,40 @@ async def get_dev_token(
     except Exception as e:
         logger.error(f"Dev token error: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to get token: {str(e)}")
+
+
+@router.post("/logout")
+async def logout(
+    request: LogoutRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Logout the user and invalidate the refresh token
+
+    Args:
+        request: The logout request containing the refresh token
+        db: The database session
+        current_user: The current authenticated user
+
+    Returns:
+        A message indicating successful logout
+    """
+    try:
+        auth_service.logout(request.refresh_token)
+        return {
+            "message": "Successfully logged out",
+            "statusCode": status.HTTP_200_OK,
+        }
+    except HTTPException as e:
+        logger.error(f"Logout error: {str(e)}")
+        return {
+            "message": e.detail,
+            "statusCode": e.status_code,
+        }
+    except Exception as e:
+        logger.error(f"Logout error: {str(e)}")
+        return {
+            "message": "Failed to logout",
+            "statusCode": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        }

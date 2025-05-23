@@ -51,3 +51,10 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str = Field(
         ..., description="Refresh token to obtain new access token"
     )
+
+class LogoutRequest(BaseModel):
+    """
+    Model for logout request
+    """
+
+    refresh_token: str
