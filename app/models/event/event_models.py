@@ -3,15 +3,22 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, DateTime, ForeignKey, Boolean
+from sqlalchemy import String, DateTime, ForeignKey, Boolean, Enum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.config.database.session import Base
 from app.models.channel.channels_model import Channel
+import enum
 
 if TYPE_CHECKING:
     from app.models.user_models import User
 
+
+class EventStatus(enum.Enum):
+    SCHEDULED = "scheduled"
+    LIVE = "live"
+    ENDED = "ended"
+    CANCELLED = "cancelled"
 
 class Event(Base):
     __tablename__ = "events"
@@ -52,6 +59,15 @@ class Event(Base):
     attendee_pw: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
     meeting_created: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False
+    )
+    status: Mapped[EventStatus] = mapped_column(
+        Enum(EventStatus), default=EventStatus.SCHEDULED, nullable=False
+    )
+    actual_start_time: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    actual_end_time: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     # Use string references instead of direct class references
