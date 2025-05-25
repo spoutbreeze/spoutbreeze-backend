@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
+from app.models.event.event_models import EventStatus
 
 
 class EventBase(BaseModel):
@@ -75,6 +76,9 @@ class EventResponse(EventBase):
     timezone: str
     created_at: datetime
     updated_at: datetime
+    status: EventStatus
+    actual_start_time: Optional[datetime] = None
+    actual_end_time: Optional[datetime] = None
 
     model_config = {
         "from_attributes": True,

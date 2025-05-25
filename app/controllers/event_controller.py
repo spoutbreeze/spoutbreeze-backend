@@ -12,6 +12,7 @@ from app.models.event.event_schemas import (
     EventListResponse,
     EventUpdate,
 )
+from app.models.event.event_models import EventStatus
 from app.services.event_service import EventService
 from app.services.bbb_service import BBBService
 
@@ -44,6 +45,12 @@ async def create_event(
             user_id=UUID(str(current_user.id)),
         )
         return new_event
+    except ValueError as e:
+        # Handle the case where the event creation fails due to validation errors
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException as e:
+        # Handle the case where the event creation fails due to HTTP errors
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -115,7 +122,61 @@ async def join_event(
     except Exception as e:
         # Handle any other exceptions
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/upcoming", response_model=EventListResponse)
+async def get_upcoming_events(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> EventListResponse:
+    """Get upcoming events for the current user."""
+    try:
+        events = await event_service.get_upcoming_events(db=db, user_id=current_user.id)
+        return EventListResponse(events=events, total=len(events))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/past", response_model=EventListResponse)
+async def get_past_events(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> EventListResponse:
+    """Get past events for the current user."""
+    try:
+        events = await event_service.get_past_events(db=db, user_id=current_user.id)
+        return EventListResponse(events=events, total=len(events))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/live", response_model=EventListResponse)
+async def get_live_events(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> EventListResponse:
+    """Get currently live events for the current user."""
+    try:
+        events = await event_service.get_live_events(db=db, user_id=current_user.id)
+        return EventListResponse(events=events, total=len(events))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{event_id}/end", response_model=Dict[str, str])
+async def end_event(
+    event_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, str]:
+    """End an event by ID."""
+    try:
+        result = await event_service.end_event(
+            db=db,
+            event_id=event_id,
+            user_id=UUID(str(current_user.id)),
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/all", response_model=EventListResponse)
 async def get_all_events(

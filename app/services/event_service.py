@@ -1,9 +1,10 @@
 from typing import List, Dict, Any
 from uuid import UUID
+from datetime import datetime
 
 from app.models.bbb_schemas import JoinMeetingRequest
 from app.models.user_models import User
-from app.models.event.event_models import Event
+from app.models.event.event_models import Event, EventStatus
 from app.models.event.event_schemas import EventCreate, EventUpdate, EventResponse
 from app.models.channel.channels_schemas import ChannelCreate, ChannelResponse
 from app.services.channels_service import ChannelsService
@@ -38,6 +39,15 @@ class EventService:
         Create a new event.
         """
         try:
+            # Check if event title already exists
+            existing_event = await db.execute(
+                select(Event).where(Event.title == event.title)
+            )
+            existing_event = existing_event.scalars().first()
+            if existing_event:
+                raise ValueError(f"Event with title '{event.title}' already exists.")
+            
+            
             channel = await self._get_or_create_channel(
                 db=db,
                 channel_name=event.channel_name,
@@ -66,10 +76,11 @@ class EventService:
 
             # Add the new event to the session
             db.add(new_event)
-
-            # Add organizers after adding the event
-            if organizers:
-                new_event.organizers.extend(organizers)
+            # Flush to get the new event ID
+            await db.flush()
+            # Refresh the new event to get the ID and other defaults
+            await db.refresh(new_event)
+            await db.commit()
 
             # Generate unique meeting ID and passwords
             unique_meeting_id = new_event.title.replace(" ", "_")[:32]
@@ -84,8 +95,16 @@ class EventService:
             new_event.attendee_pw = attendee_pw
             new_event.meeting_created = False
 
-            # Commit the changes
-            await db.commit()
+            if organizers:
+                # Load the event with the organizers relationship
+                result = await db.execute(
+                    select(Event)
+                    .options(selectinload(Event.organizers))
+                    .where(Event.id == new_event.id)
+                )
+                event_with_organizers = result.scalars().first()
+                event_with_organizers.organizers.extend(organizers)
+                await db.commit()
 
             # Refresh the event with eager loading of relationships
             result = await db.execute(
@@ -138,6 +157,7 @@ class EventService:
                 "created_at": new_event.created_at,
                 "updated_at": new_event.updated_at,
                 "meeting_created": new_event.meeting_created,
+                "status": new_event.status,
             }
 
             # Convert to EventResponse
@@ -177,15 +197,18 @@ class EventService:
 
             if not event.meeting_created:
                 # Create the meeting in BBB
-                await self._create_bbb_meeting(  # noqa: E401
+                await self._create_bbb_meeting(
                     db=db,
                     event=event,
                     new_event=event,
                     user_id=user_id,
                 )
-
+                
                 # Update the event with meeting details
                 event.meeting_created = True
+                event.status = EventStatus.LIVE
+                event.actual_start_time = datetime.now()
+
                 await db.commit()
                 await db.refresh(event)
                 logger.info(
@@ -209,6 +232,95 @@ class EventService:
             logger.error(f"Error starting event with ID {event_id}: {e}")
             await db.rollback()
             raise
+
+    async def end_event(
+        self,
+        db: AsyncSession,
+        event_id: UUID,
+        user_id: UUID,
+    ) -> Dict[str, str]:
+        """
+        End an event by ID.
+        """
+        try:
+            # Get the event
+            select_stmt = (
+                select(Event)
+                .options(selectinload(Event.creator))
+                .where(Event.id == event_id, Event.creator_id == user_id)
+            )
+            result = await db.execute(select_stmt)
+            event = result.scalars().first()
+            
+            if not event:
+                raise ValueError(f"Event with ID {event_id} does not exist or you don't have permission.")
+            
+            if event.status != EventStatus.LIVE:
+                raise ValueError(f"Event is not currently live.")
+
+            # End the BBB meeting if it exists
+            if event.meeting_id:
+                from app.models.bbb_schemas import EndMeetingRequest
+                end_request = EndMeetingRequest(
+                    meeting_id=event.meeting_id,
+                    password=event.moderator_pw
+                )
+                await self.bbb_service.end_meeting(request=end_request, db=db)
+
+            # Update event status
+            event.status = EventStatus.ENDED
+            event.actual_end_time = datetime.now()
+            
+            await db.commit()
+            logger.info(f"Event {event.title} ended at {event.actual_end_time}")
+            
+            return {"message": "Event ended successfully"}
+            
+        except Exception as e:
+            logger.error(f"Error ending event with ID {event_id}: {e}")
+            await db.rollback()
+            raise
+
+    async def get_events_by_status(
+        self,
+        db: AsyncSession,
+        status: EventStatus,
+        user_id: UUID = None,
+    ) -> List[EventResponse]:
+        """
+        Get events by status, optionally filtered by user.
+        """
+        try:
+            query = select(Event).options(
+                selectinload(Event.organizers),
+                selectinload(Event.channel),
+                selectinload(Event.creator),
+            ).where(Event.status == status)
+            
+            if user_id:
+                query = query.where(Event.creator_id == user_id)
+            
+            result = await db.execute(query)
+            events = result.scalars().all()
+            
+            logger.info(f"Retrieved {len(events)} events with status {status.value}")
+            return list(events)
+            
+        except Exception as e:
+            logger.error(f"Error retrieving events with status {status.value}: {e}")
+            raise
+
+    async def get_upcoming_events(self, db: AsyncSession, user_id: UUID = None) -> List[EventResponse]:
+        """Get upcoming events (scheduled status)."""
+        return await self.get_events_by_status(db, EventStatus.SCHEDULED, user_id)
+
+    async def get_past_events(self, db: AsyncSession, user_id: UUID = None) -> List[EventResponse]:
+        """Get past events (ended status)."""
+        return await self.get_events_by_status(db, EventStatus.ENDED, user_id)
+
+    async def get_live_events(self, db: AsyncSession, user_id: UUID = None) -> List[EventResponse]:
+        """Get currently live events."""
+        return await self.get_events_by_status(db, EventStatus.LIVE, user_id)
 
     async def join_event(
         self,
