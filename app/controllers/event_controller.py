@@ -324,5 +324,8 @@ async def delete_event(
             user_id=UUID(str(current_user.id)),
         )
         return {"message": "Event deleted successfully"}
+    except ValueError as e:
+        # Handle the case where the event ID is not found
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
