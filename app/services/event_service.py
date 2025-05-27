@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
 from app.config.logger_config import logger
+from app.config.settings import get_settings
 import secrets
 
 
@@ -28,6 +29,8 @@ class EventService:
         self.bbb_service = BBBService()
         self.channel_service = ChannelsService()
         self.event_helpers = EventHelpers()
+        self.settings = get_settings()
+        self.plugin_manifests_url = self.settings.plugin_manifests_url
 
     async def create_event(
         self,
@@ -326,7 +329,8 @@ class EventService:
         self,
         db: AsyncSession,
         event_id: UUID,
-        user_id: UUID,
+        user_id: UUID = None,
+        full_name: str = None,
     ) -> Dict[str, str]:
         """
         Join an event by ID.
@@ -355,12 +359,12 @@ class EventService:
             attendee_join_request = JoinMeetingRequest(
                 meeting_id=event.meeting_id,
                 password=event.attendee_pw,
-                full_name=event.creator.first_name,
+                full_name=full_name,
             )
             moderator_join_request = JoinMeetingRequest(
                 meeting_id=event.meeting_id,
                 password=event.moderator_pw,
-                full_name=event.creator.first_name,
+                full_name=full_name,
             )
 
             attendee_join_url = self.bbb_service.get_join_url(
@@ -456,7 +460,7 @@ class EventService:
                     selectinload(Event.channel),
                     selectinload(Event.creator),
                 )
-                .where(Event.channel_id == channel_id)
+                .where(Event.channel_id == channel_id, Event.status == EventStatus.SCHEDULED or Event.status == EventStatus.LIVE)
             )
             events = result.scalars().all()
 
@@ -606,12 +610,14 @@ class EventService:
         meeting_request = self.event_helpers.prepare_bbb_meeting_request(
             event=event,
             new_event=new_event,
+            plugin_manifests=self.plugin_manifests_url,
         )
 
         bbb_meeting = await self.bbb_service.create_meeting(
             request=meeting_request,
             user_id=user_id,
             db=db,
+            event_id=new_event.id,
         )
 
         return bbb_meeting

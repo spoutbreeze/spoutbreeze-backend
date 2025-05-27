@@ -44,18 +44,27 @@ class EventHelpers:
     def prepare_bbb_meeting_request(
         event: EventCreate,
         new_event: Event,
+        plugin_manifests: str = None,
     ) -> CreateMeetingRequest:
         """
         Prepare BBB meeting request data.
         """
         # Create the meeting request
-        meeting_request = CreateMeetingRequest(
-            name=event.title,
-            meeting_id=new_event.meeting_id,
-            attendee_pw=new_event.attendee_pw,
-            moderator_pw=new_event.moderator_pw,
-            welcome=f"Welcome to {event.title}",
-        )
+        meeting_data = {
+            "name":event.title,
+            "meeting_id":new_event.meeting_id,
+            "attendee_pw":new_event.attendee_pw,
+            "moderator_pw":new_event.moderator_pw,
+            "welcome":f"Welcome to {event.title}",
+            "record":True,
+            "allow_start_stop_recording":True,
+        }
+        if plugin_manifests:
+            meeting_data["pluginManifests"] = [
+                {"url": plugin_manifests}
+            ]
+            
+        meeting_request = CreateMeetingRequest(**meeting_data)
         return meeting_request
 
     @staticmethod
