@@ -87,27 +87,32 @@ async def start_event(
         # Handle any other exceptions
         raise HTTPException(status_code=500, detail=str(e))
 
+from pydantic import BaseModel
+class JoinEventRequest(BaseModel):
+    full_name: str
 
-@router.post("/{event_id}/join", response_model=Dict[str, str])
+@router.post("/{event_id}/join-url", response_model=Dict[str, str])
 async def join_event(
     event_id: UUID,
+    request: JoinEventRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    # current_user: User = Depends(get_current_user),
 ) -> Dict[str, str]:
     """
-    Join an event by ID for the current user.
+    Get the join URL for an event by ID for the current user.
     Args:
         event_id: The ID of the event to join.
         db: The database session.
         current_user: The current user.
     Returns:
-        A message indicating the result of the join operation.
+        A dictionary containing the join URL for the event.
     """
     try:
         join_result = await event_service.join_event(
             db=db,
             event_id=event_id,
-            user_id=UUID(str(current_user.id)),
+            # user_id=UUID(str(current_user.id)),
+            full_name=request.full_name,
         )
         if join_result:
             return join_result

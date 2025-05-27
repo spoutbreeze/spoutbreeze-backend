@@ -77,7 +77,7 @@ class CreateMeetingRequest(BaseModel):
 
 class JoinMeetingRequest(BaseModel):
     meeting_id: str
-    full_name: str
+    full_name: Optional[str] = None
     password: str
     user_id: Optional[str] = None
     redirect: Optional[bool] = True
