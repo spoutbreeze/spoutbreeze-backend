@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Form
-from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, status, Form, Response, Request
+from datetime import datetime, timezone
 from fastapi.security import (
     OAuth2AuthorizationCodeBearer,
     HTTPBearer,
@@ -19,6 +19,7 @@ from sqlalchemy import select
 from app.models.user_models import User
 from app.controllers.user_controller import get_current_user
 from typing import cast
+from datetime import datetime, timedelta
 
 from app.config.logger_config import logger
 from pydantic import BaseModel
@@ -53,17 +54,11 @@ async def protected_route(current_user: User = Depends(get_current_user)):
     return {"message": f"Hello, {current_user.username}! This is a protected route."}
 
 
-@router.post("/token", response_model=TokenResponse)
-async def exchange_token(request: TokenRequest, db: AsyncSession = Depends(get_db)):
-    """
-    Exchange an authorization code for access and refresh tokens
-
-    Args:
-        request: The token request containing the authorization code and redirect URI
-
-    Returns:
-        Access token, refresh token and other token information
-    """
+@router.post("/token")
+async def exchange_token(
+    request: TokenRequest, response: Response, db: AsyncSession = Depends(get_db)
+):
+    """Exchange authorization code for tokens and set secure cookies"""
     try:
         token_data = auth_service.exchange_token(
             request.code, request.redirect_uri, request.code_verifier
@@ -125,12 +120,39 @@ async def exchange_token(request: TokenRequest, db: AsyncSession = Depends(get_d
                 f"User updated: {existing_user.username}, with keycloak ID: {existing_user.keycloak_id}"
             )
 
+        # Set HTTP-only cookies with proper UTC datetime
+        access_token_expires = datetime.now(timezone.utc) + timedelta(
+            seconds=token_data.get("expires_in", 300)
+        )
+        refresh_token_expires = datetime.now(timezone.utc) + timedelta(days=30)
+
+        # Set access token cookie
+        response.set_cookie(
+            key="access_token",
+            value=token_data["access_token"],
+            expires=access_token_expires,
+            httponly=True,
+            secure=settings.env == "production",  # Only secure in production
+            samesite="lax",
+            path="/",
+        )
+
+        # Set refresh token cookie
+        response.set_cookie(
+            key="refresh_token",
+            value=token_data["refresh_token"],
+            expires=refresh_token_expires,
+            httponly=True,
+            secure=settings.env == "production",  # Only secure in production
+            samesite="lax",
+            path="/",
+        )
+
+        # Return user info only (no tokens)
         return {
-            "access_token": token_data["access_token"],
-            "expires_in": token_data["expires_in"],
-            "refresh_token": token_data["refresh_token"],
-            "token_type": "Bearer",
             "user_info": user_info,
+            "expires_in": token_data["expires_in"],
+            "token_type": "Bearer",
         }
     except IntegrityError as e:
         await db.rollback()
@@ -147,18 +169,61 @@ async def exchange_token(request: TokenRequest, db: AsyncSession = Depends(get_d
         )
 
 
-@router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(request: RefreshTokenRequest):
-    """
-    Refresh the access token using the refresh token
+@router.post("/refresh")
+async def refresh_token(request: Request, response: Response):
+    """Refresh tokens using cookie-stored refresh token"""
+    try:
+        # Get refresh token from cookie instead of request body
+        refresh_token = request.cookies.get("refresh_token")
+        
+        if not refresh_token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token not found"
+            )
 
-    Args:
-        request: The refresh token request containing the refresh token
+        token_data = auth_service.refresh_token(refresh_token)
 
-    Returns:
-        New access token and refresh token
-    """
-    return auth_service.refresh_token(request.refresh_token)
+        # Set new cookies with proper UTC datetime
+        access_token_expires = datetime.now(timezone.utc) + timedelta(
+            seconds=token_data.get("expires_in", 300)
+        )
+        refresh_token_expires = datetime.now(timezone.utc) + timedelta(days=30)
+
+        response.set_cookie(
+            key="access_token",
+            value=token_data["access_token"],
+            expires=access_token_expires,
+            httponly=True,
+            secure=settings.env == "production",  # Only secure in production
+            samesite="lax",
+            path="/",
+        )
+
+        response.set_cookie(
+            key="refresh_token",
+            value=token_data["refresh_token"],
+            expires=refresh_token_expires,
+            httponly=True,
+            secure=settings.env == "production",  # Only secure in production
+            samesite="lax",
+            path="/",
+        )
+
+        return {
+            "user_info": token_data["user_info"],
+            "expires_in": token_data["expires_in"],
+            "token_type": "Bearer",
+        }
+    except Exception as e:
+        # Clear cookies on error
+        response.delete_cookie("access_token", path="/")
+        response.delete_cookie("refresh_token", path="/")
+        logger.error(f"Refresh token error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token invalid or expired"
+        )
 
 
 # FOR DEVELOPMENT ONLY
@@ -214,36 +279,48 @@ async def get_dev_token(
 
 @router.post("/logout")
 async def logout(
-    request: LogoutRequest,
+    request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
     Logout the user and invalidate the refresh token
-
-    Args:
-        request: The logout request containing the refresh token
-        db: The database session
-        current_user: The current authenticated user
-
-    Returns:
-        A message indicating successful logout
     """
     try:
-        auth_service.logout(request.refresh_token)
+        # Get refresh token from cookie
+        refresh_token = request.cookies.get("refresh_token")
+        
+        if refresh_token:
+            auth_service.logout(refresh_token)
+        
+        # Clear cookies
+        response.delete_cookie("access_token", path="/")
+        response.delete_cookie("refresh_token", path="/")
+
+        # Clear Keycloak cookies as well
+        keycloak_cookies = [
+            "AUTH_SESSION_ID",
+            "KC_AUTH_SESSION_HASH", 
+            "KEYCLOAK_IDENTITY",
+            "KEYCLOAK_SESSION"
+        ]
+        
+        for cookie_name in keycloak_cookies:
+            response.delete_cookie(cookie_name, path=f"/realms/${settings.keycloak_realm}/")
+            # Also try to clear for the Keycloak domain if different
+            response.delete_cookie(cookie_name, path=f"/realms/${settings.keycloak_realm}/", domain=".localhost")
+        
         return {
             "message": "Successfully logged out",
             "statusCode": status.HTTP_200_OK,
         }
-    except HTTPException as e:
-        logger.error(f"Logout error: {str(e)}")
-        return {
-            "message": e.detail,
-            "statusCode": e.status_code,
-        }
     except Exception as e:
         logger.error(f"Logout error: {str(e)}")
+        # Still clear cookies even if logout fails
+        response.delete_cookie("access_token", path="/")
+        response.delete_cookie("refresh_token", path="/")
         return {
-            "message": "Failed to logout",
-            "statusCode": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "message": "Successfully logged out",
+            "statusCode": status.HTTP_200_OK,
         }

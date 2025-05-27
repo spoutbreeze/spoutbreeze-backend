@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Path
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Path
 from typing import List
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,55 +16,49 @@ router = APIRouter(prefix="/api", tags=["Users"])
 
 
 async def get_current_user(
-    authorization: str = Header(None), db: AsyncSession = Depends(get_db)
+    request: Request,  # Add Request parameter to access cookies
+    db: AsyncSession = Depends(get_db)
 ) -> User:
     """
-    Dependency to get the current user from the token
-
-    Args:
-        authorization: The authorization header containing the Bearer token
-        db: The database session
-
-    Returns:
-        The current user information
+    Get the current authenticated user from HTTP-only cookie
     """
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
-        )
-
-    token = authorization.split(" ")[1]
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Not authenticated",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
     try:
-        # Verify and decode token
-        token_date = auth_service.validate_token(token)
-        keycloak_id = token_date.get("sub")
-        if not keycloak_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication credentials",
-            )
+        # Get access token from cookie instead of Authorization header
+        access_token = request.cookies.get("access_token")
 
-        # Check if user exists in the database
+        if not access_token:
+            raise credentials_exception
+
+        # Validate token and get payload
+        payload = auth_service.validate_token(access_token)
+
+        # Extract user identifier from token
+        keycloak_id = payload.get("sub")
+        if keycloak_id is None:
+            raise credentials_exception
+
+        # Get user from database
         stmt = select(User).where(User.keycloak_id == keycloak_id)
         result = await db.execute(stmt)
         user = result.scalars().first()
 
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
+        if user is None:
+            raise credentials_exception
 
         return user
 
+    except HTTPException:
+        raise credentials_exception
     except Exception as e:
-        logger.error(f"Error validating token: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        # Log the error for debugging
+        print(f"Authentication error: {str(e)}")
+        raise credentials_exception
 
 
 @router.get("/me", response_model=UserResponse)
@@ -79,6 +73,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
         The current user information
     """
     return current_user
+
 
 # @router.put("/me/profile", response_model=UserResponse)
 # async def update_user_profile(
