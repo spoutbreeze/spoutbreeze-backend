@@ -20,6 +20,7 @@ class EventStatus(enum.Enum):
     ENDED = "ended"
     CANCELLED = "cancelled"
 
+
 class Event(Base):
     __tablename__ = "events"
 
@@ -52,7 +53,9 @@ class Event(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )
     channel_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("channels.id"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("channels.id", ondelete="CASCADE"),
+        nullable=False,
     )
     meeting_id: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
     moderator_pw: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)

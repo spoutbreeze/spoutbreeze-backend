@@ -37,6 +37,7 @@ class Channel(Base):
         "app.models.event.event_models.Event",
         back_populates="channel",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     def __repr__(self) -> str:
