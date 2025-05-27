@@ -1,6 +1,6 @@
 from fastapi import HTTPException, status
 from jose import jwt
-from app.config.settings import keycloak_openid, get_settings
+from app.config.settings import keycloak_openid, get_settings, keycloak_admin
 
 from app.config.logger_config import logger
 
@@ -156,6 +156,35 @@ class AuthService:
                 detail="Failed to get user info",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        
+    # def update_user_profile(self, user_id: str, user_data: dict) -> bool:
+    #     """
+    #     Update user information in Keycloak
+    #     """
+    #     try:
+    #         # Map the field names to Keycloak's expected format
+    #         keycloak_user_data = {}
+            
+    #         if "first_name" in user_data:
+    #             keycloak_user_data["firstName"] = user_data["first_name"]
+    #         if "last_name" in user_data:
+    #             keycloak_user_data["lastName"] = user_data["last_name"]
+    #         if "email" in user_data:
+    #             keycloak_user_data["email"] = user_data["email"]
+    #         if "username" in user_data:
+    #             keycloak_user_data["username"] = user_data["username"]
+
+    #         # Update user with the correctly formatted data
+    #         keycloak_admin.update_user(user_id, keycloak_user_data)
+    #         logger.info(f"User info updated successfully for user ID: {user_id}")
+    #         return True    
+    #     except Exception as e:
+    #         logger.error(f"Failed to update user info: {str(e)}")
+    #         raise HTTPException(
+    #             status_code=status.HTTP_400_BAD_REQUEST,
+    #             detail=f"Failed to update user info: {str(e)}",
+    #             headers={"WWW-Authenticate": "Bearer"},
+    #         )
 
     def logout(self, refresh_token: str) -> None:
         """

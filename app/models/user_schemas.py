@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -20,6 +20,23 @@ class UserResponse(UserBase):
     keycloak_id: str
     created_at: Optional[datetime] = None
     is_active: bool
+
+    model_config = {
+        "from_attributes": True,
+    }
+
+class UpdateProfileRequest(BaseModel):
+    email: Optional[EmailStr] = Field(None, min_length=1, max_length=50)
+    first_name: Optional[str] = Field(None, min_length=1, max_length=50)
+    last_name: Optional[str] = Field(None, min_length=1, max_length=50)
+
+    @field_validator("email")
+    def validate_email(cls, v):
+        if v is not None:
+            import re
+            if not re.match(r'^[^@]+@[^@]+\.[^@]+$', v):
+                raise ValueError('Invalid email format')
+        return v
 
     model_config = {
         "from_attributes": True,
