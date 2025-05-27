@@ -79,7 +79,7 @@ def get_recordings(request: GetRecordingRequest = Body(...)):
 
 
 @router.get("/callback/meeting-ended")
-async def meeting_ended_callback(request: Request, db: AsyncSession = Depends(get_db)):
+async def meeting_ended_callback(request: Request, event_id: UUID,db: AsyncSession = Depends(get_db)):
     """Callback endpoint for when a BBB meeting ends."""
     try:
         params = dict(request.query_params)
@@ -87,7 +87,7 @@ async def meeting_ended_callback(request: Request, db: AsyncSession = Depends(ge
         if not meeting_id:
             return {"error": "Missing meetingID in query parameters"}
 
-        result = await bbb_service.meeting_ended_callback(meeting_id=meeting_id, db=db)
+        result = await bbb_service.meeting_ended_callback(meeting_id=meeting_id, db=db, event_id=event_id)
         return result
     except Exception as e:
         return {"error": str(e)}

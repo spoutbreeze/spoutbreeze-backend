@@ -19,6 +19,7 @@ from app.models.bbb_schemas import (
     GetRecordingRequest,
 )
 from app.models.bbb_models import BbbMeeting
+from app.models.event.event_models import Event
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete  # noqa: F401
 from uuid import UUID
@@ -36,6 +37,7 @@ class BBBService:
         request: CreateMeetingRequest,
         user_id: UUID,
         db: AsyncSession,
+        event_id: UUID = None,
     ) -> Dict[str, Any]:
         """Create a new BBB meeting."""
         # Generate a meeting ID if not provided
@@ -58,8 +60,17 @@ class BBBService:
             "logo": request.logo_url,
             "pluginManifests": request.pluginManifests,
             # Add call back url for meeting end
-            "meta_endCallbackUrl": f"{self.settings.api_base_url}/api/bbb/callback/meeting-ended",
-            # "meta_endCallbackUrl": "https://1f40-41-226-7-27.ngrok-free.app/api/bbb/callback/meeting-ended",
+            "meta_endCallbackUrl": (
+                f"{self.settings.api_base_url}/api/bbb/callback/meeting-ended?event_id={event_id}"
+                if event_id
+                else f"{self.settings.api_base_url}/api/bbb/callback/meeting-ended"
+            ),
+            # Uncomment the following line if you want to use ngrok for testing
+            # "meta_endCallbackUrl": (
+            #     f"https://0bd0-2c0f-4280-6000-433c-a7c0-a658-ce43-3831.ngrok-free.app/api/bbb/callback/meeting-ended?event_id={event_id}"
+            #     if event_id
+            #     else "https://0bd0-2c0f-4280-6000-433c-a7c0-a658-ce43-3831.ngrok-free.app/api/bbb/callback/meeting-ended"
+            # ),
         }
 
         # Remove None values
@@ -296,6 +307,7 @@ class BBBService:
         self,
         meeting_id: str,
         db: AsyncSession,
+        event_id: UUID = None,
     ) -> Dict[str, Any]:
         """Callback endpoint for when a BBB meeting ends."""
         try:
@@ -308,6 +320,31 @@ class BBBService:
                 logger.info(
                     f"Meeting ended callback processed successfully: {meeting_id}"
                 )
+                # If event_id is provided, call the event service directly
+                if event_id:
+                    try:
+                        # Get the user_id from the event
+                        stmt = select(Event).where(Event.meeting_id == meeting_id)
+                        result = await db.execute(stmt)
+                        event = result.scalars().first()
+                        if event and event.creator_id:
+                            # Import the event service
+                            from app.services.event_service import EventService
+
+                            event_service = EventService()
+                            await event_service.end_event(
+                                event_id=event_id, db=db, user_id=event.creator_id
+                            )
+                            logger.info(
+                                f"Event ended successfully via direct service call: {event_id}"
+                            )
+                        else:
+                            logger.warning(
+                                f"Event not found or creator_id missing for meeting: {meeting_id}"
+                            )
+                    except Exception as e:
+                        logger.error(f"Error ending event via direct service call: {e}")
+
                 return {"success": True, "message": "Meeting marked as ended"}
             else:
                 logger.warning(
@@ -392,12 +429,11 @@ class BBBService:
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
             return {"success": False, "error": str(e)}
-        
-    
+
     async def _clean_up_meetings_background(self, days: int = 30):
         """Background task with its own DB session."""
         from app.config.database.session import engine
-        
+
         async with AsyncSession(engine) as db:
             await self._clean_up_meetings(days=days, db=db)
             await db.commit()
