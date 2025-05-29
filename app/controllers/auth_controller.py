@@ -229,8 +229,9 @@ async def refresh_token(request: Request, response: Response):
 # FOR DEVELOPMENT ONLY
 @router.post("/dev-token", response_model=TokenResponse)
 async def get_dev_token(
-    username: str = Form(...),
-    password: str = Form(...),
+    username: str,
+    password: str,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
     """Development endpoint to get tokens (ONLY FOR LOCAL TESTING)"""
@@ -260,9 +261,34 @@ async def get_dev_token(
             # Create new user logic here
             pass
 
-        # Update the expiration time to 5 hours and 24h for refresh token
-        # token_response["expires_in"] = 18000  # 5 hours
-        # token_response["refresh_expires_in"] = 86400  # 24 hours
+        # Set HTTP-only cookies with proper UTC datetime
+        access_token_expires = datetime.now(timezone.utc) + timedelta(
+            seconds=token_response.get("expires_in", 300)
+        )
+        refresh_token_expires = datetime.now(timezone.utc) + timedelta(days=30)
+
+        # Set access token cookie
+        response.set_cookie(
+            key="access_token",
+            value=token_response["access_token"],
+            expires=access_token_expires,
+            httponly=True,
+            secure=settings.env == "production",  # Only secure in production
+            samesite="lax",
+            path="/",
+        )
+
+        # Set refresh token cookie
+        response.set_cookie(
+            key="refresh_token",
+            value=token_response["refresh_token"],
+            expires=refresh_token_expires,
+            httponly=True,
+            secure=settings.env == "production",  # Only secure in production
+            samesite="lax",
+            path="/",
+        )
+
         return {
             "access_token": token_response["access_token"],
             "expires_in": token_response["expires_in"],
@@ -272,6 +298,13 @@ async def get_dev_token(
             "user_info": user_info,
         }
 
+    except IntegrityError as e:
+        await db.rollback()
+        logger.error(f"Database integrity error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User with this Keycloak ID already exists",
+        )
     except Exception as e:
         logger.error(f"Dev token error: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to get token: {str(e)}")
