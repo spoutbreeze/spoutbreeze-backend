@@ -12,6 +12,7 @@ from app.models.channel.channels_schemas import (
     ChannelUpdate,
 )
 from app.services.channels_service import ChannelsService
+from app.config.logger_config import logger
 
 router = APIRouter(prefix="/api/channels", tags=["Channels"])
 channels_service = ChannelsService()
@@ -197,3 +198,25 @@ async def delete_channel(
         return {"message": "Channel deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{channel_id}/recordings")
+async def get_channel_recordings(
+    channel_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get all recordings for events in a specific channel.
+    """
+    try:
+        result = await channels_service.get_channel_recordings(
+            db=db,
+            channel_id=channel_id,
+            user_id=current_user.id,
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error getting channel recordings: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
