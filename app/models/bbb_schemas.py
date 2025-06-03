@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Dict, Any
 
 
@@ -54,8 +54,8 @@ class CreateMeetingRequest(BaseModel):
     logo_url: Optional[str] = None
     pluginManifests: Optional[List[PluginManifests]] = None
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "name": "Test Meeting",
                 "meeting_id": "test-meeting-123",
@@ -73,6 +73,7 @@ class CreateMeetingRequest(BaseModel):
                 "pluginManifests": [{"url": "http://example.com/manifest.json"}],
             }
         }
+    )
 
 
 class JoinMeetingRequest(BaseModel):
@@ -83,17 +84,18 @@ class JoinMeetingRequest(BaseModel):
     redirect: Optional[bool] = True
     pluginManifests: Optional[List[PluginManifests]] = None
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "meeting_id": "test-meeting-123",
                 "full_name": "John Doe",
                 "password": "modPW",
                 "user_id": "user-123",
-                "redirect": True,
+                "redirect": False,
                 "PluginManifests": [{"url": "http://example.com/manifest.json"}],
             }
         }
+    )
 
 
 class EndMeetingRequest(BaseModel):
@@ -101,14 +103,15 @@ class EndMeetingRequest(BaseModel):
     password: str
     pluginManifests: Optional[List[PluginManifests]] = None
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "meeting_id": "test-meeting-123",
                 "password": "modPW",
                 "pluginManifests": [{"url": "http://example.com/manifest.json"}],
             }
         }
+    )
 
 
 class GetMeetingInfoRequest(BaseModel):
@@ -116,27 +119,29 @@ class GetMeetingInfoRequest(BaseModel):
     password: str
     # pluginManifests: Optional[List[PluginManifests]] = None
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "meeting_id": "test-meeting-123",
                 "password": "modPW",
                 # "pluginManifests": [{"url": "http://example.com/manifest.json"}]
             }
         }
+    )
 
 
 class IsMeetingRunningRequest(BaseModel):
     meeting_id: str
     pluginManifests: Optional[List[PluginManifests]] = None
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "meeting_id": "test-meeting-123",
                 "PluginManifests": [{"url": "http://example.com/manifest.json"}],
             }
         }
+    )
 
 
 class GetRecordingRequest(BaseModel):

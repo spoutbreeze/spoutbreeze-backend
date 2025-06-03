@@ -37,8 +37,7 @@ class Settings(BaseSettings):
     # Api base url
     api_base_url: str = os.getenv("API_BASE_URL", "http://localhost:8000")
 
-    class Config:
-        env_file = ".env"
+    model_config = {"env_file": ".env"}
 
 
 @lru_cache()

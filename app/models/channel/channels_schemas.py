@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
@@ -38,9 +38,7 @@ class ChannelResponse(ChannelBase):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {
-        "from_attributes": True,
-    }
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ChannelListResponse(BaseModel):
@@ -51,6 +49,4 @@ class ChannelListResponse(BaseModel):
     channels: List[ChannelResponse]
     total: int
 
-    model_config = {
-        "from_attributes": True,
-    }
+    model_config = ConfigDict(from_attributes=True)
