@@ -244,7 +244,7 @@ class ChannelsService:
                 raise ValueError(f"Channel does not belong to user {user_id}.")
 
             # Get all events for this channel that have meetings
-            from app.models.event.event_models import Event, EventStatus
+            from app.models.event.event_models import Event
 
             result = await db.execute(
                 select(Event).where(
@@ -270,7 +270,7 @@ class ChannelsService:
             from app.models.bbb_schemas import GetRecordingRequest
 
             bbb_service = BBBService()
-            
+
             async def get_event_recordings(event):
                 """Get recordings for a single event"""
                 try:
@@ -278,9 +278,7 @@ class ChannelsService:
                     # Make this async if possible, or use asyncio.to_thread for sync calls
                     loop = asyncio.get_event_loop()
                     recordings_response = await loop.run_in_executor(
-                        None, 
-                        bbb_service.get_recordings, 
-                        recording_request
+                        None, bbb_service.get_recordings, recording_request
                     )
 
                     if recordings_response.get("returncode") == "SUCCESS":
@@ -288,15 +286,17 @@ class ChannelsService:
                         return recordings if recordings else []
                     return []
                 except Exception as e:
-                    logger.warning(f"Failed to get recordings for event {event.id}: {e}")
+                    logger.warning(
+                        f"Failed to get recordings for event {event.id}: {e}"
+                    )
                     return []
 
             # Execute all API calls in parallel
             tasks = [get_event_recordings(event) for event in events]
             results = await asyncio.gather(*tasks, return_exceptions=True)
-            
+
             # Flatten results
-            all_recordings = []
+            all_recordings: List[Dict[str, Any]] = []
             for result in results:
                 if isinstance(result, list):
                     all_recordings.extend(result)

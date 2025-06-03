@@ -1,6 +1,6 @@
 from fastapi import HTTPException, status
 from jose import jwt
-from app.config.settings import keycloak_openid, get_settings, keycloak_admin
+from app.config.settings import keycloak_openid, get_settings
 
 from app.config.logger_config import logger
 
@@ -90,12 +90,11 @@ class AuthService:
         Exchange authorization code for tokens
         """
         try:
-
             token = keycloak_openid.token(
                 grant_type="authorization_code",
                 code=code,
                 redirect_uri=redirect_uri,
-                code_verifier=code_verifier,
+                code_verifier=code_verifier,  # type: ignore
             )
             return token
         except Exception as e:
@@ -156,7 +155,7 @@ class AuthService:
                 detail="Failed to get user info",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
+
     # def update_user_profile(self, user_id: str, user_data: dict) -> bool:
     #     """
     #     Update user information in Keycloak
@@ -164,7 +163,7 @@ class AuthService:
     #     try:
     #         # Map the field names to Keycloak's expected format
     #         keycloak_user_data = {}
-            
+
     #         if "first_name" in user_data:
     #             keycloak_user_data["firstName"] = user_data["first_name"]
     #         if "last_name" in user_data:
@@ -177,7 +176,7 @@ class AuthService:
     #         # Update user with the correctly formatted data
     #         keycloak_admin.update_user(user_id, keycloak_user_data)
     #         logger.info(f"User info updated successfully for user ID: {user_id}")
-    #         return True    
+    #         return True
     #     except Exception as e:
     #         logger.error(f"Failed to update user info: {str(e)}")
     #         raise HTTPException(

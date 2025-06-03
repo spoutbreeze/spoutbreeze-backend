@@ -42,7 +42,7 @@ class StreamService:
             f"Stream settings with the name {new_stream_settings.title} created for user {user_id}"
         )
         return new_stream_settings
-    
+
     async def get_all_stream_settings(
         self,
         db: AsyncSession,
@@ -60,7 +60,7 @@ class StreamService:
         except Exception as e:
             logger.error(f"Error retrieving stream settings: {str(e)}")
             raise e
-        
+
     async def get_stream_settings_by_user_id(
         self,
         user_id: UUID,

@@ -25,6 +25,7 @@ class UserResponse(UserBase):
         "from_attributes": True,
     }
 
+
 class UpdateProfileRequest(BaseModel):
     email: Optional[EmailStr] = Field(None, min_length=1, max_length=50)
     first_name: Optional[str] = Field(None, min_length=1, max_length=50)
@@ -34,8 +35,9 @@ class UpdateProfileRequest(BaseModel):
     def validate_email(cls, v):
         if v is not None:
             import re
-            if not re.match(r'^[^@]+@[^@]+\.[^@]+$', v):
-                raise ValueError('Invalid email format')
+
+            if not re.match(r"^[^@]+@[^@]+\.[^@]+$", v):
+                raise ValueError("Invalid email format")
         return v
 
     model_config = {

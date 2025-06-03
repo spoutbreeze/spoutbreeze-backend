@@ -1,6 +1,6 @@
 from uuid import UUID
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Optional
 
 from app.models.event.event_models import Event
 from app.models.event.event_schemas import EventCreate
@@ -17,7 +17,7 @@ class EventHelpers:
         event: EventCreate,
         user_id: UUID,
         channel_id: UUID,
-    ) -> Dict[str, Any]:
+    ) -> Event:
         """
         Prepare event data for creation.
         """
@@ -44,27 +44,22 @@ class EventHelpers:
     def prepare_bbb_meeting_request(
         event: EventCreate,
         new_event: Event,
-        plugin_manifests: str = None,
+        plugin_manifests: Optional[str] = None,
     ) -> CreateMeetingRequest:
         """
         Prepare BBB meeting request data.
         """
         # Create the meeting request
-        meeting_data = {
-            "name":event.title,
-            "meeting_id":new_event.meeting_id,
-            "attendee_pw":new_event.attendee_pw,
-            "moderator_pw":new_event.moderator_pw,
-            "welcome":f"Welcome to {event.title}",
-            "record":True,
-            "allow_start_stop_recording":True,
-        }
-        if plugin_manifests:
-            meeting_data["pluginManifests"] = [
-                {"url": plugin_manifests}
-            ]
-            
-        meeting_request = CreateMeetingRequest(**meeting_data)
+        meeting_request = CreateMeetingRequest(
+            name=event.title,
+            meeting_id=new_event.meeting_id,
+            attendee_pw=new_event.attendee_pw,
+            moderator_pw=new_event.moderator_pw,
+            welcome=f"Welcome to {event.title}",
+            record=True,
+            allow_start_stop_recording=True,
+            plugin_manifests=[{"url": plugin_manifests}] if plugin_manifests else None,
+        )
         return meeting_request
 
     @staticmethod

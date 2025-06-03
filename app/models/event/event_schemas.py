@@ -96,3 +96,7 @@ class EventListResponse(BaseModel):
     model_config = {
         "from_attributes": True,
     }
+
+
+class JoinEventRequest(BaseModel):
+    full_name: str

@@ -11,12 +11,10 @@ from app.models.bbb_schemas import (
     IsMeetingRunningRequest,
     GetRecordingRequest,
 )
-from app.models.bbb_models import BbbMeeting
 from app.controllers.user_controller import get_current_user
 from app.models.user_models import User
 from uuid import UUID
-from sqlalchemy import select
-from app.config.settings import get_settings
+from typing import Optional
 
 router = APIRouter(prefix="/api/bbb", tags=["BigBlueButton"])
 bbb_service = BBBService()
@@ -82,7 +80,9 @@ def get_recordings(request: GetRecordingRequest = Body(...)):
 
 
 @router.get("/callback/meeting-ended")
-async def meeting_ended_callback(request: Request, event_id: UUID,db: AsyncSession = Depends(get_db)):
+async def meeting_ended_callback(
+    request: Request, event_id: UUID, db: AsyncSession = Depends(get_db)
+):
     """Callback endpoint for when a BBB meeting ends."""
     try:
         params = dict(request.query_params)
@@ -90,15 +90,18 @@ async def meeting_ended_callback(request: Request, event_id: UUID,db: AsyncSessi
         if not meeting_id:
             return {"error": "Missing meetingID in query parameters"}
 
-        result = await bbb_service.meeting_ended_callback(meeting_id=meeting_id, db=db, event_id=event_id)
+        result = await bbb_service.meeting_ended_callback(
+            meeting_id=meeting_id, db=db, event_id=event_id
+        )
         return result
     except Exception as e:
         return {"error": str(e)}
 
+
 @router.post("/maintenance/cleanup-old-meetings")
 async def cleanup_old_meetings(
     days: int = 30,
-    background_tasks: BackgroundTasks = None,
+    background_tasks: Optional[BackgroundTasks] = None,
 ):
     """
     Cleanup old meetings that are older than the specified number of days.
@@ -106,10 +109,15 @@ async def cleanup_old_meetings(
     """
     if background_tasks:
         background_tasks.add_task(bbb_service._clean_up_meetings_background, days=days)
-        return {"message": f"Cleanup task for meetings older than {days} days has been started."}
+        return {
+            "message": f"Cleanup task for meetings older than {days} days has been started."
+        }
     else:
         await bbb_service._clean_up_meetings_background(days=days)
-        return {"message": f"Cleanup task for meetings older than {days} days has been completed."}
+        return {
+            "message": f"Cleanup task for meetings older than {days} days has been completed."
+        }
+
 
 @router.get("/proxy/stream-endpoints")
 async def get_stream_endpoints_proxy(
@@ -123,12 +131,12 @@ async def get_stream_endpoints_proxy(
         # Get all available stream settings
         stream_service = StreamService()
         stream_settings = await stream_service.get_all_stream_settings(db=db)
-        
+
         return stream_settings
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 
 # Get Meeting by internal meeting ID
 @router.get("/meeting/{internal_meeting_id}")
@@ -148,6 +156,3 @@ async def get_meeting_by_internal_id(
         return meeting
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
-    
-

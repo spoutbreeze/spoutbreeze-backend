@@ -11,8 +11,8 @@ from app.models.event.event_schemas import (
     EventResponse,
     EventListResponse,
     EventUpdate,
+    JoinEventRequest,
 )
-from app.models.event.event_models import EventStatus
 from app.services.event_service import EventService
 from app.services.bbb_service import BBBService
 
@@ -87,9 +87,6 @@ async def start_event(
         # Handle any other exceptions
         raise HTTPException(status_code=500, detail=str(e))
 
-from pydantic import BaseModel
-class JoinEventRequest(BaseModel):
-    full_name: str
 
 @router.post("/{event_id}/join-url", response_model=Dict[str, str])
 async def join_event(
@@ -127,7 +124,8 @@ async def join_event(
     except Exception as e:
         # Handle any other exceptions
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
 @router.get("/upcoming", response_model=EventListResponse)
 async def get_upcoming_events(
     db: AsyncSession = Depends(get_db),
@@ -139,6 +137,7 @@ async def get_upcoming_events(
         return EventListResponse(events=events, total=len(events))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/past", response_model=EventListResponse)
 async def get_past_events(
@@ -152,6 +151,7 @@ async def get_past_events(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/live", response_model=EventListResponse)
 async def get_live_events(
     db: AsyncSession = Depends(get_db),
@@ -163,6 +163,7 @@ async def get_live_events(
         return EventListResponse(events=events, total=len(events))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/{event_id}/end", response_model=Dict[str, str])
 async def end_event(
@@ -182,6 +183,7 @@ async def end_event(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/all", response_model=EventListResponse)
 async def get_all_events(

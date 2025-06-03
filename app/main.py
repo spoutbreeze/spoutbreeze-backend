@@ -3,8 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 from contextlib import asynccontextmanager
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
+from apscheduler.schedulers.asyncio import AsyncIOScheduler  # type: ignore
+from apscheduler.triggers.cron import CronTrigger  # type: ignore
 
 from app.services.bbb_service import BBBService
 from app.controllers.auth_controller import router as auth_router
@@ -25,6 +25,7 @@ logger = get_logger("Twitch")
 setting = get_settings()
 scheduler = AsyncIOScheduler()
 bbb_service = BBBService()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -64,7 +65,7 @@ async def lifespan(app: FastAPI):
     # Set up scheduler for bbb meeting cleanup
     scheduler.add_job(
         bbb_service._clean_up_meetings_background,
-        trigger=CronTrigger(hour="3", minute="0"), # Every day at 3 AM
+        trigger=CronTrigger(hour="3", minute="0"),  # Every day at 3 AM
         id="bbb_meeting_cleanup_job",
         name="BBB Meeting Cleanup Job",
         replace_existing=True,

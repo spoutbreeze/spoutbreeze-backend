@@ -5,9 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.services.auth_service import AuthService
 from app.config.database.session import get_db
-from app.config.logger_config import logger
 from app.models.user_models import User
-from app.models.user_schemas import UserResponse, UpdateProfileRequest
+from app.models.user_schemas import UserResponse
 
 
 auth_service = AuthService()
@@ -17,7 +16,7 @@ router = APIRouter(prefix="/api", tags=["Users"])
 
 async def get_current_user(
     request: Request,  # Add Request parameter to access cookies
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ) -> User:
     """
     Get the current authenticated user from HTTP-only cookie

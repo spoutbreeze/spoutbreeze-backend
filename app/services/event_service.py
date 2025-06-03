@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from uuid import UUID
 from datetime import datetime
 
@@ -43,10 +43,10 @@ class EventService:
         """
         try:
             # Check if event title already exists
-            existing_event = await db.execute(
+            existing_event_result = await db.execute(
                 select(Event).where(Event.title == event.title)
             )
-            existing_event = existing_event.scalars().first()
+            existing_event = existing_event_result.scalars().first()
             if existing_event:
                 raise ValueError(f"Event with title '{event.title}' already exists.")
 
@@ -105,8 +105,9 @@ class EventService:
                     .where(Event.id == new_event.id)
                 )
                 event_with_organizers = result.scalars().first()
-                event_with_organizers.organizers.extend(organizers)
-                await db.commit()
+                if event_with_organizers:
+                    event_with_organizers.organizers.extend(organizers)
+                    await db.commit()
 
             # Refresh the event with eager loading of relationships
             result = await db.execute(
@@ -118,17 +119,20 @@ class EventService:
                 )
                 .where(Event.id == new_event.id)
             )
-            new_event = result.scalars().first()
+            refreshed_event = result.scalars().first()
+
+            if not refreshed_event:
+                raise ValueError("Failed to retrieve created event")
 
             logger.info(
-                f"Event {new_event.title} created for user {user_id} in channel {channel.name}"
+                f"Event {refreshed_event.title} created for user {user_id} in channel {channel.name}"
             )
 
-            logger.info(f"User with ID {user_id} created event {new_event.title}")
+            logger.info(f"User with ID {user_id} created event {refreshed_event.title}")
 
             # Create organizers list without accessing lazy-loaded attributes
             organizers_list = []
-            for organizer in new_event.organizers:
+            for organizer in refreshed_event.organizers:
                 if organizer is not None:
                     organizers_list.append(
                         {
@@ -141,25 +145,25 @@ class EventService:
                     )
 
             event_dict = {
-                "id": str(new_event.id),
-                "title": new_event.title,
-                "description": new_event.description,
-                "occurs": new_event.occurs,
-                "start_date": new_event.start_date,
-                "end_date": new_event.end_date,
-                "start_time": new_event.start_time,
-                "timezone": new_event.timezone,
-                "channel_name": new_event.channel.name,
-                "creator_id": str(new_event.creator_id),
+                "id": str(refreshed_event.id),
+                "title": refreshed_event.title,
+                "description": refreshed_event.description,
+                "occurs": refreshed_event.occurs,
+                "start_date": refreshed_event.start_date,
+                "end_date": refreshed_event.end_date,
+                "start_time": refreshed_event.start_time,
+                "timezone": refreshed_event.timezone,
+                "channel_name": refreshed_event.channel.name,
+                "creator_id": str(refreshed_event.creator_id),
                 "organizers": organizers_list,
-                "channel_id": str(new_event.channel_id),
+                "channel_id": str(refreshed_event.channel_id),
                 "meeting_id": unique_meeting_id,
                 "attendee_pw": attendee_pw,
                 "moderator_pw": moderator_pw,
-                "created_at": new_event.created_at,
-                "updated_at": new_event.updated_at,
-                "meeting_created": new_event.meeting_created,
-                "status": new_event.status,
+                "created_at": refreshed_event.created_at,
+                "updated_at": refreshed_event.updated_at,
+                "meeting_created": refreshed_event.meeting_created,
+                "status": refreshed_event.status,
             }
 
             # Convert to EventResponse
@@ -260,10 +264,10 @@ class EventService:
                 )
 
             if event.status != EventStatus.LIVE:
-                raise ValueError(f"Event is not currently live.")
+                raise ValueError("Event is not currently live.")
 
             # End the BBB meeting if it exists
-            if event.meeting_id:
+            if event.meeting_id and event.moderator_pw:
                 from app.models.bbb_schemas import EndMeetingRequest
 
                 end_request = EndMeetingRequest(
@@ -289,7 +293,7 @@ class EventService:
         self,
         db: AsyncSession,
         status: EventStatus,
-        user_id: UUID = None,
+        user_id: Optional[UUID] = None,
     ) -> List[EventResponse]:
         """
         Get events by status, optionally filtered by user.
@@ -319,19 +323,19 @@ class EventService:
             raise
 
     async def get_upcoming_events(
-        self, db: AsyncSession, user_id: UUID = None
+        self, db: AsyncSession, user_id: Optional[UUID] = None
     ) -> List[EventResponse]:
         """Get upcoming events (scheduled status)."""
         return await self.get_events_by_status(db, EventStatus.SCHEDULED, user_id)
 
     async def get_past_events(
-        self, db: AsyncSession, user_id: UUID = None
+        self, db: AsyncSession, user_id: Optional[UUID] = None
     ) -> List[EventResponse]:
         """Get past events (ended status)."""
         return await self.get_events_by_status(db, EventStatus.ENDED, user_id)
 
     async def get_live_events(
-        self, db: AsyncSession, user_id: UUID = None
+        self, db: AsyncSession, user_id: Optional[UUID] = None
     ) -> List[EventResponse]:
         """Get currently live events."""
         return await self.get_events_by_status(db, EventStatus.LIVE, user_id)
@@ -340,8 +344,8 @@ class EventService:
         self,
         db: AsyncSession,
         event_id: UUID,
-        user_id: UUID = None,
-        full_name: str = None,
+        user_id: Optional[UUID] = None,
+        full_name: Optional[str] = None,
     ) -> Dict[str, str]:
         """
         Join an event by ID.

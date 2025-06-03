@@ -199,6 +199,7 @@ async def delete_channel(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/{channel_id}/recordings")
 async def get_channel_recordings(
     channel_id: UUID,

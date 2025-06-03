@@ -52,6 +52,7 @@ class RefreshTokenRequest(BaseModel):
         ..., description="Refresh token to obtain new access token"
     )
 
+
 class LogoutRequest(BaseModel):
     """
     Model for logout request

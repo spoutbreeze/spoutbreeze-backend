@@ -2,7 +2,7 @@ import time
 import json
 import requests
 from urllib.parse import urlencode
-from typing import Dict, Any, Union
+from typing import Dict, Any, Union, Optional
 from fastapi import HTTPException
 from fastapi.responses import RedirectResponse
 from datetime import datetime, timedelta
@@ -37,7 +37,7 @@ class BBBService:
         request: CreateMeetingRequest,
         user_id: UUID,
         db: AsyncSession,
-        event_id: UUID = None,
+        event_id: Optional[UUID] = None,
     ) -> Dict[str, Any]:
         """Create a new BBB meeting."""
         # Generate a meeting ID if not provided
@@ -222,7 +222,11 @@ class BBBService:
         if request.pluginManifests:
             # Convert Pydantic models to dict first, then to JSON string
             plugin_dicts = [
-                plugin.model_dump() if hasattr(plugin, "model_dump") else plugin.dict()
+                (
+                    plugin.model_dump()
+                    if hasattr(plugin, "model_dump")
+                    else plugin.model_dump()
+                )
                 for plugin in request.pluginManifests
             ]
             processed_params["pluginManifests"] = json.dumps(plugin_dicts)
@@ -239,13 +243,12 @@ class BBBService:
         )
         return f"{self.server_base_url}isMeetingRunning?meetingID={meeting_id}&checksum={checksum}"
 
-
     # Service for the plugin to get meeting id and mod password
     async def get_meeting_by_internal_id(
         self,
         internal_meeting_id: str,
         db: AsyncSession,
-    ) -> BbbMeeting:
+    ) -> Optional[BbbMeeting]:
         """Get the meeting details by internal meeting ID."""
         try:
             stmt = select(BbbMeeting).where(
@@ -262,7 +265,7 @@ class BBBService:
 
         except Exception as e:
             logger.error(f"Error fetching meeting by internal ID: {e}")
-            return
+            return None
 
     async def update_meeting_status(
         self,
@@ -334,7 +337,7 @@ class BBBService:
         self,
         meeting_id: str,
         db: AsyncSession,
-        event_id: UUID = None,
+        event_id: Optional[UUID] = None,
     ) -> Dict[str, Any]:
         """Callback endpoint for when a BBB meeting ends."""
         try:
@@ -352,8 +355,8 @@ class BBBService:
                     try:
                         # Get the user_id from the event
                         stmt = select(Event).where(Event.meeting_id == meeting_id)
-                        result = await db.execute(stmt)
-                        event = result.scalars().first()
+                        event_result = await db.execute(stmt)
+                        event = event_result.scalars().first()
                         if event and event.creator_id:
                             # Import the event service
                             from app.services.event_service import EventService

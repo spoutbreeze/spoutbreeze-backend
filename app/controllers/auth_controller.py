@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Form, Response, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from datetime import datetime, timezone
 from fastapi.security import (
     OAuth2AuthorizationCodeBearer,
@@ -8,8 +8,6 @@ from app.services.auth_service import AuthService
 from app.models.auth_models import (
     TokenRequest,
     TokenResponse,
-    RefreshTokenRequest,
-    LogoutRequest,
 )
 from app.config.settings import keycloak_openid, get_settings
 from app.config.database.session import get_db
@@ -19,7 +17,7 @@ from sqlalchemy import select
 from app.models.user_models import User
 from app.controllers.user_controller import get_current_user
 from typing import cast
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from app.config.logger_config import logger
 from pydantic import BaseModel
@@ -175,11 +173,11 @@ async def refresh_token(request: Request, response: Response):
     try:
         # Get refresh token from cookie instead of request body
         refresh_token = request.cookies.get("refresh_token")
-        
+
         if not refresh_token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Refresh token not found"
+                detail="Refresh token not found",
             )
 
         token_data = auth_service.refresh_token(refresh_token)
@@ -222,7 +220,7 @@ async def refresh_token(request: Request, response: Response):
         logger.error(f"Refresh token error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token invalid or expired"
+            detail="Refresh token invalid or expired",
         )
 
 
@@ -323,10 +321,10 @@ async def logout(
     try:
         # Get refresh token from cookie
         refresh_token = request.cookies.get("refresh_token")
-        
+
         if refresh_token:
             auth_service.logout(refresh_token)
-        
+
         # Clear cookies
         response.delete_cookie("access_token", path="/")
         response.delete_cookie("refresh_token", path="/")
@@ -334,16 +332,22 @@ async def logout(
         # Clear Keycloak cookies as well
         keycloak_cookies = [
             "AUTH_SESSION_ID",
-            "KC_AUTH_SESSION_HASH", 
+            "KC_AUTH_SESSION_HASH",
             "KEYCLOAK_IDENTITY",
-            "KEYCLOAK_SESSION"
+            "KEYCLOAK_SESSION",
         ]
-        
+
         for cookie_name in keycloak_cookies:
-            response.delete_cookie(cookie_name, path=f"/realms/${settings.keycloak_realm}/")
+            response.delete_cookie(
+                cookie_name, path=f"/realms/${settings.keycloak_realm}/"
+            )
             # Also try to clear for the Keycloak domain if different
-            response.delete_cookie(cookie_name, path=f"/realms/${settings.keycloak_realm}/", domain=".localhost")
-        
+            response.delete_cookie(
+                cookie_name,
+                path=f"/realms/${settings.keycloak_realm}/",
+                domain=".localhost",
+            )
+
         return {
             "message": "Successfully logged out",
             "statusCode": status.HTTP_200_OK,
