@@ -4,7 +4,7 @@ from typing import Optional
 
 from app.models.event.event_models import Event
 from app.models.event.event_schemas import EventCreate
-from app.models.bbb_schemas import CreateMeetingRequest
+from app.models.bbb_schemas import CreateMeetingRequest, PluginManifests
 
 
 class EventHelpers:
@@ -58,7 +58,7 @@ class EventHelpers:
             welcome=f"Welcome to {event.title}",
             record=True,
             allow_start_stop_recording=True,
-            pluginManifests=[{"url": plugin_manifests}] if plugin_manifests else None,
+            pluginManifests=[PluginManifests(url=plugin_manifests)] if plugin_manifests else None,
         )
         return meeting_request
 
