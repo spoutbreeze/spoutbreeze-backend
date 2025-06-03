@@ -11,9 +11,12 @@ from app.models.bbb_schemas import (
     IsMeetingRunningRequest,
     GetRecordingRequest,
 )
+from app.models.bbb_models import BbbMeeting
 from app.controllers.user_controller import get_current_user
 from app.models.user_models import User
 from uuid import UUID
+from sqlalchemy import select
+from app.config.settings import get_settings
 from typing import Optional
 
 router = APIRouter(prefix="/api/bbb", tags=["BigBlueButton"])
@@ -100,23 +103,17 @@ async def meeting_ended_callback(
 
 @router.post("/maintenance/cleanup-old-meetings")
 async def cleanup_old_meetings(
+    background_tasks: BackgroundTasks,
     days: int = 30,
-    background_tasks: Optional[BackgroundTasks] = None,
 ):
     """
     Cleanup old meetings that are older than the specified number of days.
     This is a background task that runs asynchronously.
     """
-    if background_tasks:
-        background_tasks.add_task(bbb_service._clean_up_meetings_background, days=days)
-        return {
-            "message": f"Cleanup task for meetings older than {days} days has been started."
-        }
-    else:
-        await bbb_service._clean_up_meetings_background(days=days)
-        return {
-            "message": f"Cleanup task for meetings older than {days} days has been completed."
-        }
+    background_tasks.add_task(bbb_service._clean_up_meetings_background, days=days)
+    return {
+        "message": f"Cleanup task for meetings older than {days} days has been started."
+    }
 
 
 @router.get("/proxy/stream-endpoints")

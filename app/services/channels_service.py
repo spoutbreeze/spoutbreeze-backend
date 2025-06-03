@@ -246,14 +246,14 @@ class ChannelsService:
             # Get all events for this channel that have meetings
             from app.models.event.event_models import Event
 
-            result = await db.execute(
+            events_result = await db.execute(
                 select(Event).where(
                     Event.channel_id == channel_id,
                     Event.meeting_id.isnot(None),
                     # Event.status == EventStatus.ENDED, # Uncomment in production
                 )
             )
-            events = result.scalars().all()
+            events = events_result.scalars().all()
 
             if not events:
                 logger.info(
@@ -293,11 +293,11 @@ class ChannelsService:
 
             # Execute all API calls in parallel
             tasks = [get_event_recordings(event) for event in events]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
+            recordings_results = await asyncio.gather(*tasks, return_exceptions=True)
 
             # Flatten results
             all_recordings: List[Dict[str, Any]] = []
-            for result in results:
+            for result in recordings_results:
                 if isinstance(result, list):
                     all_recordings.extend(result)
                 elif isinstance(result, Exception):
