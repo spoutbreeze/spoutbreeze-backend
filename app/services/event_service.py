@@ -49,8 +49,7 @@ class EventService:
             existing_event = existing_event.scalars().first()
             if existing_event:
                 raise ValueError(f"Event with title '{event.title}' already exists.")
-            
-            
+
             channel = await self._get_or_create_channel(
                 db=db,
                 channel_name=event.channel_name,
@@ -206,7 +205,7 @@ class EventService:
                     new_event=event,
                     user_id=user_id,
                 )
-                
+
                 # Update the event with meeting details
                 event.meeting_created = True
                 event.status = EventStatus.LIVE
@@ -254,31 +253,33 @@ class EventService:
             )
             result = await db.execute(select_stmt)
             event = result.scalars().first()
-            
+
             if not event:
-                raise ValueError(f"Event with ID {event_id} does not exist or you don't have permission.")
-            
+                raise ValueError(
+                    f"Event with ID {event_id} does not exist or you don't have permission."
+                )
+
             if event.status != EventStatus.LIVE:
                 raise ValueError(f"Event is not currently live.")
 
             # End the BBB meeting if it exists
             if event.meeting_id:
                 from app.models.bbb_schemas import EndMeetingRequest
+
                 end_request = EndMeetingRequest(
-                    meeting_id=event.meeting_id,
-                    password=event.moderator_pw
+                    meeting_id=event.meeting_id, password=event.moderator_pw
                 )
                 await self.bbb_service.end_meeting(request=end_request, db=db)
 
             # Update event status
             event.status = EventStatus.ENDED
             event.actual_end_time = datetime.now()
-            
+
             await db.commit()
             logger.info(f"Event {event.title} ended at {event.actual_end_time}")
-            
+
             return {"message": "Event ended successfully"}
-            
+
         except Exception as e:
             logger.error(f"Error ending event with ID {event_id}: {e}")
             await db.rollback()
@@ -294,34 +295,44 @@ class EventService:
         Get events by status, optionally filtered by user.
         """
         try:
-            query = select(Event).options(
-                selectinload(Event.organizers),
-                selectinload(Event.channel),
-                selectinload(Event.creator),
-            ).where(Event.status == status)
-            
+            query = (
+                select(Event)
+                .options(
+                    selectinload(Event.organizers),
+                    selectinload(Event.channel),
+                    selectinload(Event.creator),
+                )
+                .where(Event.status == status)
+            )
+
             if user_id:
                 query = query.where(Event.creator_id == user_id)
-            
+
             result = await db.execute(query)
             events = result.scalars().all()
-            
+
             logger.info(f"Retrieved {len(events)} events with status {status.value}")
             return list(events)
-            
+
         except Exception as e:
             logger.error(f"Error retrieving events with status {status.value}: {e}")
             raise
 
-    async def get_upcoming_events(self, db: AsyncSession, user_id: UUID = None) -> List[EventResponse]:
+    async def get_upcoming_events(
+        self, db: AsyncSession, user_id: UUID = None
+    ) -> List[EventResponse]:
         """Get upcoming events (scheduled status)."""
         return await self.get_events_by_status(db, EventStatus.SCHEDULED, user_id)
 
-    async def get_past_events(self, db: AsyncSession, user_id: UUID = None) -> List[EventResponse]:
+    async def get_past_events(
+        self, db: AsyncSession, user_id: UUID = None
+    ) -> List[EventResponse]:
         """Get past events (ended status)."""
         return await self.get_events_by_status(db, EventStatus.ENDED, user_id)
 
-    async def get_live_events(self, db: AsyncSession, user_id: UUID = None) -> List[EventResponse]:
+    async def get_live_events(
+        self, db: AsyncSession, user_id: UUID = None
+    ) -> List[EventResponse]:
         """Get currently live events."""
         return await self.get_events_by_status(db, EventStatus.LIVE, user_id)
 
@@ -460,7 +471,10 @@ class EventService:
                     selectinload(Event.channel),
                     selectinload(Event.creator),
                 )
-                .where(Event.channel_id == channel_id, Event.status == EventStatus.SCHEDULED or Event.status == EventStatus.LIVE)
+                .where(
+                    Event.channel_id == channel_id,
+                    Event.status.in_([EventStatus.SCHEDULED, EventStatus.LIVE]),
+                )
             )
             events = result.scalars().all()
 

@@ -65,6 +65,8 @@ class BBBService:
                 if event_id
                 else f"{self.settings.api_base_url}/api/bbb/callback/meeting-ended"
             ),
+            # "meta_streamEndpointsUrl": f"{self.settings.api_base_url}/api/stream-endpoints/",
+            # "meta_streamEndpointsUrl": f"https://6f13-102-157-168-239.ngrok-free.app/api/bbb/proxy/stream-endpoints",
             # Uncomment the following line if you want to use ngrok for testing
             # "meta_endCallbackUrl": (
             #     f"https://0bd0-2c0f-4280-6000-433c-a7c0-a658-ce43-3831.ngrok-free.app/api/bbb/callback/meeting-ended?event_id={event_id}"
@@ -236,6 +238,31 @@ class BBBService:
             "isMeetingRunning", f"meetingID={meeting_id}", self.secret
         )
         return f"{self.server_base_url}isMeetingRunning?meetingID={meeting_id}&checksum={checksum}"
+
+
+    # Service for the plugin to get meeting id and mod password
+    async def get_meeting_by_internal_id(
+        self,
+        internal_meeting_id: str,
+        db: AsyncSession,
+    ) -> BbbMeeting:
+        """Get the meeting details by internal meeting ID."""
+        try:
+            stmt = select(BbbMeeting).where(
+                BbbMeeting.internal_meeting_id == internal_meeting_id
+            )
+            result = await db.execute(stmt)
+            meeting = result.scalars().first()
+
+            if not meeting:
+                logger.warning(f"Meeting not found: {internal_meeting_id}")
+                return None
+
+            return meeting
+
+        except Exception as e:
+            logger.error(f"Error fetching meeting by internal ID: {e}")
+            return
 
     async def update_meeting_status(
         self,

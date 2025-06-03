@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Body, Depends, Request, BackgroundTasks
-
+from fastapi import APIRouter, Body, Depends, Request, BackgroundTasks, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.config.database.session import get_db
 from app.services.bbb_service import BBBService
+from app.services.stream_service import StreamService
 from app.models.bbb_schemas import (
     CreateMeetingRequest,
     JoinMeetingRequest,
@@ -9,11 +11,12 @@ from app.models.bbb_schemas import (
     IsMeetingRunningRequest,
     GetRecordingRequest,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.config.database.session import get_db
+from app.models.bbb_models import BbbMeeting
 from app.controllers.user_controller import get_current_user
 from app.models.user_models import User
 from uuid import UUID
+from sqlalchemy import select
+from app.config.settings import get_settings
 
 router = APIRouter(prefix="/api/bbb", tags=["BigBlueButton"])
 bbb_service = BBBService()
@@ -107,4 +110,44 @@ async def cleanup_old_meetings(
     else:
         await bbb_service._clean_up_meetings_background(days=days)
         return {"message": f"Cleanup task for meetings older than {days} days has been completed."}
+
+@router.get("/proxy/stream-endpoints")
+async def get_stream_endpoints_proxy(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Proxy endpoint for BBB plugins to access stream endpoints.
+    Returns all available stream endpoints.
+    """
+    try:
+        # Get all available stream settings
+        stream_service = StreamService()
+        stream_settings = await stream_service.get_all_stream_settings(db=db)
+        
+        return stream_settings
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     
+
+# Get Meeting by internal meeting ID
+@router.get("/meeting/{internal_meeting_id}")
+async def get_meeting_by_internal_id(
+    internal_meeting_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get a BBB meeting by its internal meeting ID.
+    """
+    try:
+        meeting = await bbb_service.get_meeting_by_internal_id(
+            internal_meeting_id=internal_meeting_id, db=db
+        )
+        if not meeting:
+            raise HTTPException(status_code=404, detail="Meeting not found")
+        return meeting
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    
+

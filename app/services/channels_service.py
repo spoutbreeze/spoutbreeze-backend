@@ -5,7 +5,7 @@ from app.models.channel.channels_schemas import (
     ChannelUpdate,
 )
 from uuid import UUID
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
@@ -223,4 +223,91 @@ class ChannelsService:
             logger.error(
                 f"Error getting or creating channel {name} for user {user_id}: {e}"
             )
+            raise
+
+    async def get_channel_recordings(
+        self,
+        db: AsyncSession,
+        channel_id: UUID,
+        user_id: UUID,
+    ) -> Dict[str, Any]:
+        """
+        Get all recordings for events in a specific channel.
+        """
+        try:
+            # Check if channel exists and belongs to user
+            channel = await self.get_channel_by_id(db=db, channel_id=channel_id)
+            if not channel:
+                raise ValueError(f"Channel with ID {channel_id} does not exist.")
+
+            if channel.creator_id != user_id:
+                raise ValueError(f"Channel does not belong to user {user_id}.")
+
+            # Get all events for this channel that have meetings
+            from app.models.event.event_models import Event, EventStatus
+
+            result = await db.execute(
+                select(Event).where(
+                    Event.channel_id == channel_id,
+                    Event.meeting_id.isnot(None),
+                    # Event.status == EventStatus.ENDED, # Uncomment in production
+                )
+            )
+            events = result.scalars().all()
+
+            if not events:
+                logger.info(
+                    f"No events with meetings found for channel ID {channel_id}"
+                )
+                return {
+                    "recordings": [],
+                    "total_recordings": 0,
+                }
+
+            # Get recordings for all events in parallel
+            import asyncio
+            from app.services.bbb_service import BBBService
+            from app.models.bbb_schemas import GetRecordingRequest
+
+            bbb_service = BBBService()
+            
+            async def get_event_recordings(event):
+                """Get recordings for a single event"""
+                try:
+                    recording_request = GetRecordingRequest(meeting_id=event.meeting_id)
+                    # Make this async if possible, or use asyncio.to_thread for sync calls
+                    loop = asyncio.get_event_loop()
+                    recordings_response = await loop.run_in_executor(
+                        None, 
+                        bbb_service.get_recordings, 
+                        recording_request
+                    )
+
+                    if recordings_response.get("returncode") == "SUCCESS":
+                        recordings = recordings_response.get("recordings", [])
+                        return recordings if recordings else []
+                    return []
+                except Exception as e:
+                    logger.warning(f"Failed to get recordings for event {event.id}: {e}")
+                    return []
+
+            # Execute all API calls in parallel
+            tasks = [get_event_recordings(event) for event in events]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Flatten results
+            all_recordings = []
+            for result in results:
+                if isinstance(result, list):
+                    all_recordings.extend(result)
+                elif isinstance(result, Exception):
+                    logger.warning(f"Task failed with exception: {result}")
+
+            return {
+                "recordings": all_recordings,
+                "total_recordings": len(all_recordings),
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting recordings for channel {channel_id}: {e}")
             raise
