@@ -241,7 +241,10 @@ async def get_dev_token(
 
         # Get token from Keycloak
         token_response = keycloak_openid.token(
-            grant_type="password", username=username, password=password
+            grant_type="password",
+            username=username,
+            password=password,
+            scope="openid profile email",
         )
 
         # Process user info

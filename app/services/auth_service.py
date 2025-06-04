@@ -1,6 +1,9 @@
+import requests
 from fastapi import HTTPException, status
 from jose import jwt
 from app.config.settings import keycloak_openid, get_settings
+from datetime import datetime, timedelta
+from typing import Optional
 
 from app.config.logger_config import logger
 
@@ -23,6 +26,8 @@ class AuthService:
             )
         else:
             self.public_key = raw_key
+
+        self._admin_token_cache: Optional[dict] = None
 
     def validate_token(self, token: str) -> dict:
         """
@@ -95,6 +100,7 @@ class AuthService:
                 code=code,
                 redirect_uri=redirect_uri,
                 code_verifier=code_verifier,  # type: ignore
+                scope="openid profile email account",
             )
             return token
         except Exception as e:
@@ -156,34 +162,108 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-    # def update_user_profile(self, user_id: str, user_data: dict) -> bool:
-    #     """
-    #     Update user information in Keycloak
-    #     """
-    #     try:
-    #         # Map the field names to Keycloak's expected format
-    #         keycloak_user_data = {}
+    def _get_admin_token(self) -> str:
+        """
+        Get admin token from Keycloak with caching
+        """
+        # Check if we have a cached token that's still valid
+        if (self._admin_token_cache and
+            self._admin_token_cache["expires_at"] > datetime.now()):
+            return self._admin_token_cache["token"]
 
-    #         if "first_name" in user_data:
-    #             keycloak_user_data["firstName"] = user_data["first_name"]
-    #         if "last_name" in user_data:
-    #             keycloak_user_data["lastName"] = user_data["last_name"]
-    #         if "email" in user_data:
-    #             keycloak_user_data["email"] = user_data["email"]
-    #         if "username" in user_data:
-    #             keycloak_user_data["username"] = user_data["username"]
+        try:
+            admin_token_url = f"{self.settings.keycloak_server_url}/realms/master/protocol/openid-connect/token"
 
-    #         # Update user with the correctly formatted data
-    #         keycloak_admin.update_user(user_id, keycloak_user_data)
-    #         logger.info(f"User info updated successfully for user ID: {user_id}")
-    #         return True
-    #     except Exception as e:
-    #         logger.error(f"Failed to update user info: {str(e)}")
-    #         raise HTTPException(
-    #             status_code=status.HTTP_400_BAD_REQUEST,
-    #             detail=f"Failed to update user info: {str(e)}",
-    #             headers={"WWW-Authenticate": "Bearer"},
-    #         )
+            data = {
+                "grant_type": "password",
+                "client_id": "admin-cli",
+                "username": self.settings.keycloak_admin_username,
+                "password": self.settings.keycloak_admin_password,
+            }
+
+            headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+            response = requests.post(admin_token_url, data=data, headers=headers)
+            response.raise_for_status()
+
+            token_data = response.json()
+            access_token = token_data["access_token"]
+            expires_in = token_data.get("expires_in", 300)
+
+            # Cache the token with expiration (subtract 30 seconds for safety)
+            self._admin_token_cache = {
+                "token": access_token,
+                "expires_at": datetime.now() + timedelta(seconds=expires_in - 30)
+            }
+
+            return access_token
+        except Exception as e:
+            logger.error(f"Failed to get admin token: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to authenticate with Keycloak admin",
+            )
+
+    def update_user_profile(self, user_id: str, user_data: dict) -> bool:
+        """
+        Update user information in Keycloak using admin API
+        """
+        try:
+            logger.info(f"Updating profile for user: {user_id}")
+            
+            # Get admin token
+            admin_token = self._get_admin_token()
+            
+            # Map the field names to Keycloak's expected format
+            keycloak_user_data = {}
+
+            if "first_name" in user_data:
+                keycloak_user_data["firstName"] = user_data["first_name"]
+            if "last_name" in user_data:
+                keycloak_user_data["lastName"] = user_data["last_name"]
+            if "email" in user_data:
+                keycloak_user_data["email"] = user_data["email"]
+            if "username" in user_data:
+                keycloak_user_data["username"] = user_data["username"]
+
+            logger.debug(f"Keycloak update data: {keycloak_user_data}")
+
+            # Update user with the correctly formatted data using Keycloak Admin API
+            update_url = f"{self.settings.keycloak_server_url}/admin/realms/{self.settings.keycloak_realm}/users/{user_id}"
+            
+            headers = {
+                "Authorization": f"Bearer {admin_token}",
+                "Content-Type": "application/json",
+            }
+            
+            response = requests.put(update_url, json=keycloak_user_data, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            logger.info(f"User profile updated successfully in Keycloak for user ID: {user_id}")
+            return True
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout while updating user profile for user ID: {user_id}")
+            raise HTTPException(
+                status_code=status.HTTP_408_REQUEST_TIMEOUT,
+                detail="Request timeout while updating user profile",
+            )
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to update user info in Keycloak for user {user_id}: {str(e)}")
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"Response status: {e.response.status_code}")
+                logger.error(f"Response content: {e.response.text}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to update user info: {str(e)}",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error updating user profile for user {user_id}: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="An unexpected error occurred while updating user profile",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
     def logout(self, refresh_token: str) -> None:
         """
@@ -199,3 +279,15 @@ class AuthService:
                 detail="Failed to logout",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+
+    def health_check(self) -> bool:
+        """
+        Check if Keycloak is reachable
+        """
+        try:
+            # Try to get the well-known configuration
+            well_known = keycloak_openid.well_known()
+            return "authorization_endpoint" in well_known
+        except Exception as e:
+            logger.error(f"Keycloak health check failed: {str(e)}")
+            return False
