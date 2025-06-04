@@ -37,8 +37,11 @@ class Settings(BaseSettings):
     # Api base url
     api_base_url: str = os.getenv("API_BASE_URL", "http://localhost:8000")
 
-    class Config:
-        env_file = ".env"
+    # Admin credentials for Keycloak
+    keycloak_admin_username: str = "admin_firas"  # Add default or use env
+    keycloak_admin_password: str = "admin"  # Add default or use env
+
+    model_config = {"env_file": ".env"}
 
 
 @lru_cache()

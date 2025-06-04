@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
@@ -42,9 +42,7 @@ class StreamSettingsResponse(streamSettingsBase):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {
-        "from_attributes": True,
-    }
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StreamSettingsListResponse(BaseModel):
@@ -55,9 +53,7 @@ class StreamSettingsListResponse(BaseModel):
     stream_settings: List[StreamSettingsResponse]
     total: int
 
-    model_config = {
-        "from_attributes": True,
-    }
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StreamSettingsDeleteResponse(BaseModel):
@@ -68,6 +64,4 @@ class StreamSettingsDeleteResponse(BaseModel):
     message: str
     id: UUID
 
-    model_config = {
-        "from_attributes": True,
-    }
+    model_config = ConfigDict(from_attributes=True)

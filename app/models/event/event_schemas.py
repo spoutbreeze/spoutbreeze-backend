@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
@@ -55,9 +55,7 @@ class OrganizerResponse(BaseModel):
     first_name: str
     last_name: str
 
-    model_config = {
-        "from_attributes": True,
-    }
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EventResponse(EventBase):
@@ -80,9 +78,7 @@ class EventResponse(EventBase):
     actual_start_time: Optional[datetime] = None
     actual_end_time: Optional[datetime] = None
 
-    model_config = {
-        "from_attributes": True,
-    }
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EventListResponse(BaseModel):
@@ -93,9 +89,7 @@ class EventListResponse(BaseModel):
     events: List[EventResponse]
     total: int
 
-    model_config = {
-        "from_attributes": True,
-    }
+    model_config = ConfigDict(from_attributes=True)
 
 
 class JoinEventRequest(BaseModel):

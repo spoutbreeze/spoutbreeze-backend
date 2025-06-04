@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -21,9 +21,7 @@ class UserResponse(UserBase):
     created_at: Optional[datetime] = None
     is_active: bool
 
-    model_config = {
-        "from_attributes": True,
-    }
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UpdateProfileRequest(BaseModel):
@@ -40,6 +38,4 @@ class UpdateProfileRequest(BaseModel):
                 raise ValueError("Invalid email format")
         return v
 
-    model_config = {
-        "from_attributes": True,
-    }
+    model_config = ConfigDict(from_attributes=True)
