@@ -3,7 +3,7 @@ from fastapi import HTTPException, status
 from jose import jwt
 from app.config.settings import keycloak_openid, get_settings
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from app.config.logger_config import logger
 
@@ -13,7 +13,7 @@ class AuthService:
     Service for authentication and authorization operations
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.settings = get_settings()
         self.keycloak_client_id = self.settings.keycloak_client_id
 
@@ -29,7 +29,7 @@ class AuthService:
 
         self._admin_token_cache: Optional[dict] = None
 
-    def validate_token(self, token: str) -> dict:
+    def validate_token(self, token: str) -> Dict[str, Any]:
         """
         Validate and decode the JWT token
 
@@ -90,7 +90,7 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-    def exchange_token(self, code: str, redirect_uri: str, code_verifier: str) -> dict:
+    def exchange_token(self, code: str, redirect_uri: str, code_verifier: str) -> Dict[str, Any]:
         """
         Exchange authorization code for tokens
         """
@@ -110,7 +110,7 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-    def refresh_token(self, refresh_token: str) -> dict:
+    def refresh_token(self, refresh_token: str) -> Dict[str, Any]:
         """
         Refresh the access token using the refresh token
 
@@ -148,7 +148,7 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-    def get_user_info(self, access_token: str) -> dict:
+    def get_user_info(self, access_token: str) -> Dict[str, Any]:
         """
         Get user information from Keycloak using the access token
         """
@@ -206,7 +206,7 @@ class AuthService:
                 detail="Failed to authenticate with Keycloak admin",
             )
 
-    def update_user_profile(self, user_id: str, user_data: dict) -> bool:
+    def update_user_profile(self, user_id: str, user_data: Dict[str, Any]) -> bool:
         """
         Update user information in Keycloak using admin API
         """

@@ -1,9 +1,8 @@
 # Create a new file: app/controllers/health_controller.py
-from fastapi import APIRouter, status, Response
+from fastapi import APIRouter, status, Response, Depends
 from app.services.auth_service import AuthService
 from app.config.database.session import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Depends
 from sqlalchemy import text
 from typing import Dict, Any
 from datetime import datetime
@@ -15,12 +14,12 @@ auth_service = AuthService()
 
 @router.get("/health")
 async def health_check(
-    db: AsyncSession = Depends(get_db), response: Response = None
+    response: Response, db: AsyncSession = Depends(get_db)
 ) -> Dict[str, Any]:
     """
     Comprehensive health check endpoint
     """
-    health_status = {
+    health_status: Dict[str, Any] = {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "services": {},
@@ -45,7 +44,7 @@ async def health_check(
         health_status["status"] = "degraded"
 
     # Set appropriate status code
-    if health_status["status"] != "healthy" and response:
+    if health_status["status"] != "healthy":
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
     return health_status

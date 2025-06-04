@@ -23,7 +23,7 @@ test_engine = create_async_engine(
 )
 
 TestingSessionLocal = sessionmaker(
-    test_engine,
+    bind=test_engine,
     class_=AsyncSession,
     expire_on_commit=False,
 )
