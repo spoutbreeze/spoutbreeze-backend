@@ -86,8 +86,10 @@ async def update_user_profile(
     Update the current user's profile information
     """
     request_id = str(uuid.uuid4())
-    logger.info(f"[{request_id}] Starting profile update for user: {current_user.username}")
-    
+    logger.info(
+        f"[{request_id}] Starting profile update for user: {current_user.username}"
+    )
+
     try:
         profile_update_data = {}
 
@@ -98,31 +100,36 @@ async def update_user_profile(
             profile_update_data["first_name"] = update_data.first_name.strip()
         if update_data.last_name is not None:
             profile_update_data["last_name"] = update_data.last_name.strip()
-            
+
         if not profile_update_data:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="No profile data provided to update",
             )
 
-        logger.info(f"[{request_id}] Updating Keycloak profile for user: {current_user.keycloak_id}")
-        
-        # Update user in Keycloak first
-        auth_service.update_user_profile(
-            user_id=current_user.keycloak_id, 
-            user_data=profile_update_data
+        logger.info(
+            f"[{request_id}] Updating Keycloak profile for user: {current_user.keycloak_id}"
         )
 
-        logger.info(f"[{request_id}] Updating database profile for user: {current_user.username}")
-        
+        # Update user in Keycloak first
+        auth_service.update_user_profile(
+            user_id=current_user.keycloak_id, user_data=profile_update_data
+        )
+
+        logger.info(
+            f"[{request_id}] Updating database profile for user: {current_user.username}"
+        )
+
         # Update user in the database
         for field, value in profile_update_data.items():
             setattr(current_user, field, value)
 
         await db.commit()
         await db.refresh(current_user)
-        
-        logger.info(f"[{request_id}] Profile update completed successfully for user: {current_user.username}")
+
+        logger.info(
+            f"[{request_id}] Profile update completed successfully for user: {current_user.username}"
+        )
         return current_user
     except HTTPException as e:
         await db.rollback()

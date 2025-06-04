@@ -167,8 +167,10 @@ class AuthService:
         Get admin token from Keycloak with caching
         """
         # Check if we have a cached token that's still valid
-        if (self._admin_token_cache and
-            self._admin_token_cache["expires_at"] > datetime.now()):
+        if (
+            self._admin_token_cache
+            and self._admin_token_cache["expires_at"] > datetime.now()
+        ):
             return self._admin_token_cache["token"]
 
         try:
@@ -193,7 +195,7 @@ class AuthService:
             # Cache the token with expiration (subtract 30 seconds for safety)
             self._admin_token_cache = {
                 "token": access_token,
-                "expires_at": datetime.now() + timedelta(seconds=expires_in - 30)
+                "expires_at": datetime.now() + timedelta(seconds=expires_in - 30),
             }
 
             return access_token
@@ -210,10 +212,10 @@ class AuthService:
         """
         try:
             logger.info(f"Updating profile for user: {user_id}")
-            
+
             # Get admin token
             admin_token = self._get_admin_token()
-            
+
             # Map the field names to Keycloak's expected format
             keycloak_user_data = {}
 
@@ -230,16 +232,20 @@ class AuthService:
 
             # Update user with the correctly formatted data using Keycloak Admin API
             update_url = f"{self.settings.keycloak_server_url}/admin/realms/{self.settings.keycloak_realm}/users/{user_id}"
-            
+
             headers = {
                 "Authorization": f"Bearer {admin_token}",
                 "Content-Type": "application/json",
             }
-            
-            response = requests.put(update_url, json=keycloak_user_data, headers=headers, timeout=10)
+
+            response = requests.put(
+                update_url, json=keycloak_user_data, headers=headers, timeout=10
+            )
             response.raise_for_status()
-            
-            logger.info(f"User profile updated successfully in Keycloak for user ID: {user_id}")
+
+            logger.info(
+                f"User profile updated successfully in Keycloak for user ID: {user_id}"
+            )
             return True
         except requests.exceptions.Timeout:
             logger.error(f"Timeout while updating user profile for user ID: {user_id}")
@@ -248,8 +254,10 @@ class AuthService:
                 detail="Request timeout while updating user profile",
             )
         except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to update user info in Keycloak for user {user_id}: {str(e)}")
-            if hasattr(e, 'response') and e.response is not None:
+            logger.error(
+                f"Failed to update user info in Keycloak for user {user_id}: {str(e)}"
+            )
+            if hasattr(e, "response") and e.response is not None:
                 logger.error(f"Response status: {e.response.status_code}")
                 logger.error(f"Response content: {e.response.text}")
             raise HTTPException(
@@ -258,7 +266,9 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
         except Exception as e:
-            logger.error(f"Unexpected error updating user profile for user {user_id}: {str(e)}")
+            logger.error(
+                f"Unexpected error updating user profile for user {user_id}: {str(e)}"
+            )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="An unexpected error occurred while updating user profile",

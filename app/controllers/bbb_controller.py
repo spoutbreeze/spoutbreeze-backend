@@ -11,13 +11,9 @@ from app.models.bbb_schemas import (
     IsMeetingRunningRequest,
     GetRecordingRequest,
 )
-from app.models.bbb_models import BbbMeeting
 from app.controllers.user_controller import get_current_user
 from app.models.user_models import User
 from uuid import UUID
-from sqlalchemy import select
-from app.config.settings import get_settings
-from typing import Optional
 
 router = APIRouter(prefix="/api/bbb", tags=["BigBlueButton"])
 bbb_service = BBBService()

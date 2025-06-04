@@ -74,18 +74,18 @@ async def db_session(setup_database):
 @pytest_asyncio.fixture
 async def client(db_session):
     """Create a test client with database dependency override"""
+
     def override_get_db_sync():
         return db_session
-    
+
     app.dependency_overrides[get_db] = override_get_db_sync
-    
+
     # Use ASGITransport to properly connect AsyncClient with FastAPI app
     async with AsyncClient(
-        transport=ASGITransport(app=app), 
-        base_url="http://test"
+        transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
         yield ac
-    
+
     app.dependency_overrides.clear()
 
 
@@ -96,7 +96,7 @@ async def test_user(db_session: AsyncSession):
         id=uuid4(),
         keycloak_id=f"test-keycloak-id-{uuid4()}",
         username=f"testuser-{uuid4()}",
-        email=f"test-{uuid4()}@example.com",   
+        email=f"test-{uuid4()}@example.com",
         first_name="Test",
         last_name="User",
         created_at=datetime.now(),
@@ -127,6 +127,8 @@ async def test_channel(db_session: AsyncSession, test_user: User):
 @pytest.fixture
 def mock_current_user(test_user: User):
     """Mock the get_current_user dependency"""
+
     def _mock_current_user():
         return test_user
+
     return _mock_current_user
