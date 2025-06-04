@@ -2,8 +2,7 @@ import pytest
 import pytest_asyncio
 import asyncio
 from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from uuid import uuid4
 from datetime import datetime
 
@@ -22,7 +21,7 @@ test_engine = create_async_engine(
     echo=False,
 )
 
-TestingSessionLocal = sessionmaker(
+TestingSessionLocal = async_sessionmaker(
     bind=test_engine,
     class_=AsyncSession,
     expire_on_commit=False,
