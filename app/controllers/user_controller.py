@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Path
-from typing import List
+from typing import List, Dict, Any
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -8,16 +8,18 @@ from app.config.database.session import get_db
 from app.models.user_models import User
 from app.models.user_schemas import UserResponse, UpdateProfileRequest
 from app.config.logger_config import logger
+from app.config.settings import get_settings
 import uuid
 
 
 auth_service = AuthService()
+settings = get_settings()
 
 router = APIRouter(prefix="/api", tags=["Users"])
 
 
 async def get_current_user(
-    request: Request,  # Add Request parameter to access cookies
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """
@@ -52,14 +54,62 @@ async def get_current_user(
         if user is None:
             raise credentials_exception
 
+        # Store the token payload in the user object for role extraction
+        # This is a temporary attribute, not persisted to database
+        user._token_payload = payload
+
         return user
 
     except HTTPException:
         raise credentials_exception
     except Exception as e:
         # Log the error for debugging
-        print(f"Authentication error: {str(e)}")
+        logger.error(f"Authentication error: {str(e)}")
         raise credentials_exception
+
+
+def get_current_user_roles(current_user: User = Depends(get_current_user)) -> List[str]:
+    """
+    Extract client roles from the current user's token payload
+    """
+    # Get the token payload that was stored in get_current_user
+    payload = getattr(current_user, '_token_payload', {})
+    
+    # Extract roles from resource_access for client roles
+    resource_access = payload.get("resource_access", {})
+    client_access = resource_access.get(settings.keycloak_client_id, {})
+    roles = client_access.get("roles", [])
+    
+    logger.info(f"User {current_user.username} roles: {roles}")
+    return roles
+
+
+def require_role(required_role: str):
+    """
+    Create a dependency that checks for a specific client role
+    """
+    def role_checker(roles: List[str] = Depends(get_current_user_roles)):
+        if required_role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail=f"Role '{required_role}' required to access this resource"
+            )
+        return True
+    return role_checker
+
+
+def require_any_role(*required_roles: str):
+    """
+    Create a dependency that checks for any of the specified client roles
+    """
+    def role_checker(roles: List[str] = Depends(get_current_user_roles)):
+        if not any(role in roles for role in required_roles):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail=f"One of these roles required: {', '.join(required_roles)}"
+            )
+        return True
+    return role_checker
 
 
 @router.get("/me", response_model=UserResponse)
@@ -150,9 +200,10 @@ async def get_users(
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _: bool = Depends(require_role("admin")),
 ):
     """
-    Get a list of users
+    Get a list of users (Admin only)
 
     Args:
         skip: Number of users to skip
@@ -163,6 +214,7 @@ async def get_users(
     Returns:
         A list of users
     """
+    logger.info(f"Admin user {current_user.username} is requesting users list")
     stmt = select(User).offset(skip).limit(limit)
     result = await db.execute(stmt)
     users = result.scalars().all()
@@ -174,9 +226,10 @@ async def get_user_by_id(
     user_id: UUID = Path(..., title="The ID of the user to get"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _: bool = Depends(require_any_role("admin", "moderator")),
 ):
     """
-    Get a user by ID
+    Get a user by ID (Admin only)
 
     Args:
         user_id: The ID of the user to get
@@ -186,6 +239,7 @@ async def get_user_by_id(
     Returns:
         The requested user information
     """
+    logger.info(f"User {current_user.username} is requesting user {user_id}")
     stmt = select(User).where(User.id == user_id)
     result = await db.execute(stmt)
     user = result.scalars().first()
