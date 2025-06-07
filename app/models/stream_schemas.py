@@ -39,6 +39,8 @@ class StreamSettingsResponse(streamSettingsBase):
 
     id: UUID
     user_id: UUID
+    user_first_name: str
+    user_last_name: str
     created_at: datetime
     updated_at: datetime
 
