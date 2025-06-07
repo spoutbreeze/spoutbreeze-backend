@@ -258,15 +258,21 @@ class ChannelsService:
         Get or create a channel.
         """
         try:
-            stmt = select(Channel).where(
-                Channel.name == name,
-                Channel.creator_id == user_id,
+            # Check if channel exists with creator info
+            result = await db.execute(
+                select(Channel, User)
+                .join(User, Channel.creator_id == User.id)
+                .where(
+                    Channel.name == name,
+                    Channel.creator_id == user_id,
+                )
             )
-            result = await db.execute(stmt)
-            channel = result.scalar_one_or_none()
-            if channel:
+            channel_creator_pair = result.first()
+
+            if channel_creator_pair:
+                channel, creator = channel_creator_pair
                 logger.info(f"Channel {channel.name} already exists for user {user_id}")
-                return channel
+                return self._create_channel_response(channel, creator)
             else:
                 channel_create = ChannelCreate(name=name)
                 result = await self.create_channel(db, channel_create, user_id)
