@@ -65,6 +65,8 @@ class EventResponse(EventBase):
 
     id: UUID
     creator_id: UUID
+    creator_first_name: str
+    creator_last_name: str
     organizers: List[OrganizerResponse] = []
     channel_id: UUID
     meeting_id: Optional[str] = None

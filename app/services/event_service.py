@@ -32,6 +32,51 @@ class EventService:
         self.settings = get_settings()
         self.plugin_manifests_url = self.settings.plugin_manifests_url
 
+    def _create_event_response(self, event: Event) -> EventResponse:
+        """
+        Create an EventResponse with creator information from an Event model.
+        """
+        # Create organizers list
+        organizers_list = []
+        for organizer in event.organizers:
+            if organizer is not None:
+                organizers_list.append(
+                    {
+                        "id": organizer.id,
+                        "username": organizer.username,
+                        "email": organizer.email,
+                        "first_name": organizer.first_name,
+                        "last_name": organizer.last_name,
+                    }
+                )
+
+        event_dict = {
+            "id": event.id,
+            "title": event.title,
+            "description": event.description,
+            "occurs": event.occurs,
+            "start_date": event.start_date,
+            "end_date": event.end_date,
+            "start_time": event.start_time,
+            "timezone": event.timezone,
+            "creator_id": event.creator_id,
+            "creator_first_name": event.creator.first_name,
+            "creator_last_name": event.creator.last_name,
+            "organizers": organizers_list,
+            "channel_id": event.channel_id,
+            "meeting_id": event.meeting_id,
+            "attendee_pw": event.attendee_pw,
+            "moderator_pw": event.moderator_pw,
+            "created_at": event.created_at,
+            "updated_at": event.updated_at,
+            "meeting_created": event.meeting_created,
+            "status": event.status,
+            "actual_start_time": event.actual_start_time,
+            "actual_end_time": event.actual_end_time,
+        }
+
+        return EventResponse.model_validate(event_dict)
+
     async def create_event(
         self,
         db: AsyncSession,
@@ -130,44 +175,7 @@ class EventService:
 
             logger.info(f"User with ID {user_id} created event {refreshed_event.title}")
 
-            # Create organizers list without accessing lazy-loaded attributes
-            organizers_list = []
-            for organizer in refreshed_event.organizers:
-                if organizer is not None:
-                    organizers_list.append(
-                        {
-                            "id": str(organizer.id),
-                            "username": organizer.username,
-                            "email": organizer.email,
-                            "first_name": organizer.first_name,
-                            "last_name": organizer.last_name,
-                        }
-                    )
-
-            event_dict = {
-                "id": str(refreshed_event.id),
-                "title": refreshed_event.title,
-                "description": refreshed_event.description,
-                "occurs": refreshed_event.occurs,
-                "start_date": refreshed_event.start_date,
-                "end_date": refreshed_event.end_date,
-                "start_time": refreshed_event.start_time,
-                "timezone": refreshed_event.timezone,
-                "channel_name": refreshed_event.channel.name,
-                "creator_id": str(refreshed_event.creator_id),
-                "organizers": organizers_list,
-                "channel_id": str(refreshed_event.channel_id),
-                "meeting_id": unique_meeting_id,
-                "attendee_pw": attendee_pw,
-                "moderator_pw": moderator_pw,
-                "created_at": refreshed_event.created_at,
-                "updated_at": refreshed_event.updated_at,
-                "meeting_created": refreshed_event.meeting_created,
-                "status": refreshed_event.status,
-            }
-
-            # Convert to EventResponse
-            event_response = EventResponse.model_validate(event_dict)
+            event_response = self._create_event_response(refreshed_event)
             return event_response
         except Exception as e:
             logger.error(f"Error creating event: {e}")
@@ -315,8 +323,10 @@ class EventService:
             result = await db.execute(query)
             events = result.scalars().all()
 
-            logger.info(f"Retrieved {len(events)} events with status {status.value}")
-            return list(events)
+            event_responses = [self._create_event_response(event) for event in events]
+
+            logger.info(f"Retrieved {len(event_responses)} events with status {status.value}")
+            return event_responses
 
         except Exception as e:
             logger.error(f"Error retrieving events with status {status.value}: {e}")
@@ -420,7 +430,7 @@ class EventService:
                 raise ValueError(f"Event with ID {event_id} does not exist.")
 
             logger.info(f"Event retrieved with ID {event_id}")
-            return event
+            return self._create_event_response(event)
         except Exception as e:
             logger.error(f"Error retrieving event with ID {event_id}: {e}")
             raise
@@ -445,8 +455,10 @@ class EventService:
             if not events:
                 raise ValueError("No events found.")
 
-            logger.info(f"Retrieved {len(events)} events")
-            return list(events)
+            event_responses = [self._create_event_response(event) for event in events]
+
+            logger.info(f"Retrieved {len(event_responses)} events")
+            return event_responses
         except Exception as e:
             logger.error(f"Error retrieving events: {e}")
             raise
@@ -486,8 +498,10 @@ class EventService:
                 # 404 Not Found
                 raise ValueError(f"No events found for channel ID {channel_id}.")
 
-            logger.info(f"Retrieved {len(events)} events for channel ID {channel_id}")
-            return list(events)
+            event_responses = [self._create_event_response(event) for event in events]
+
+            logger.info(f"Retrieved {len(event_responses)} events for channel ID {channel_id}")
+            return event_responses
         except Exception as e:
             logger.error(f"Error retrieving events for channel ID {channel_id}: {e}")
             raise
@@ -556,7 +570,7 @@ class EventService:
 
             await db.commit()
             await db.refresh(event)
-            return event
+            return self._create_event_response(event)
         except Exception as e:
             logger.error(f"Error updating event with ID {event_id}: {e}")
             await db.rollback()
