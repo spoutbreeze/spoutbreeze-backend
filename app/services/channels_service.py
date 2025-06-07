@@ -4,11 +4,13 @@ from app.models.channel.channels_schemas import (
     ChannelResponse,
     ChannelUpdate,
 )
+from app.models.user_models import User
 from uuid import UUID
 from typing import List, Optional, Dict, Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
+from sqlalchemy.orm import selectinload
 from app.config.logger_config import logger
 
 
@@ -17,12 +19,26 @@ class ChannelsService:
     Service class for managing channels.
     """
 
+    def _create_channel_response(self, channel: Channel, creator: User) -> ChannelResponse:
+        """
+        Create a ChannelResponse with creator information.
+        """
+        return ChannelResponse(
+            id=channel.id,
+            name=channel.name,
+            creator_id=channel.creator_id,
+            creator_first_name=creator.first_name,
+            creator_last_name=creator.last_name,
+            created_at=channel.created_at,
+            updated_at=channel.updated_at,
+        )
+
     async def create_channel(
         self,
         db: AsyncSession,
         channel_create: ChannelCreate,
         user_id: UUID,
-    ) -> Channel:
+    ) -> ChannelResponse:
         """
         Create a new channel.
         """
@@ -34,8 +50,15 @@ class ChannelsService:
             db.add(new_channel)
             await db.commit()
             await db.refresh(new_channel)
+            
+            # Get the creator information
+            creator_result = await db.execute(
+                select(User).where(User.id == user_id)
+            )
+            creator = creator_result.scalar_one()
+            
             logger.info(f"Channel {new_channel.name} created for user {user_id}")
-            return new_channel
+            return self._create_channel_response(new_channel, creator)
         except Exception as e:
             logger.error(f"Error creating channel: {e}")
             await db.rollback()
@@ -51,11 +74,19 @@ class ChannelsService:
         """
         try:
             result = await db.execute(
-                select(Channel).where(Channel.creator_id == user_id)
+                select(Channel, User)
+                .join(User, Channel.creator_id == User.id)
+                .where(Channel.creator_id == user_id)
             )
-            channels = result.scalars().all()
+            channel_creator_pairs = result.all()
+            
+            channels = [
+                self._create_channel_response(channel, creator)
+                for channel, creator in channel_creator_pairs
+            ]
+            
             logger.info(f"Retrieved {len(channels)} channels for user {user_id}")
-            return list(channels)
+            return channels
         except Exception as e:
             logger.error(f"Error retrieving channels for user {user_id}: {e}")
             raise
@@ -64,18 +95,25 @@ class ChannelsService:
         self,
         db: AsyncSession,
         channel_id: UUID,
-    ) -> Optional[Channel]:
+    ) -> Optional[ChannelResponse]:
         """
         Get a channel by its ID.
         """
         try:
-            result = await db.execute(select(Channel).where(Channel.id == channel_id))
-            channel = result.scalar_one_or_none()
-            if channel:
+            result = await db.execute(
+                select(Channel, User)
+                .join(User, Channel.creator_id == User.id)
+                .where(Channel.id == channel_id)
+            )
+            channel_creator_pair = result.first()
+            
+            if channel_creator_pair:
+                channel, creator = channel_creator_pair
                 logger.info(f"Retrieved channel {channel.name} with ID {channel_id}")
+                return self._create_channel_response(channel, creator)
             else:
                 logger.warning(f"Channel with ID {channel_id} not found")
-            return channel
+                return None
         except Exception as e:
             logger.error(f"Error retrieving channel with ID {channel_id}: {e}")
             raise
@@ -88,10 +126,19 @@ class ChannelsService:
         Get all channels.
         """
         try:
-            result = await db.execute(select(Channel))
-            channels = result.scalars().all()
+            result = await db.execute(
+                select(Channel, User)
+                .join(User, Channel.creator_id == User.id)
+            )
+            channel_creator_pairs = result.all()
+            
+            channels = [
+                self._create_channel_response(channel, creator)
+                for channel, creator in channel_creator_pairs
+            ]
+            
             logger.info(f"Retrieved {len(channels)} channels")
-            return list(channels)
+            return channels
         except Exception as e:
             logger.error(f"Error retrieving channels: {e}")
             raise
@@ -130,22 +177,26 @@ class ChannelsService:
         channel_id: UUID,
         channel_update: ChannelUpdate,
         user_id: UUID,
-    ) -> Optional[Channel]:
+    ) -> Optional[ChannelResponse]:
         """
         Update a channel by ID.
         """
         #  Check if the channel exists and belongs to the user
-        query = select(Channel).where(
+        query = select(Channel, User).join(User, Channel.creator_id == User.id).where(
             Channel.id == channel_id,
             Channel.creator_id == user_id,
         )
         result = await db.execute(query)
-        channel = result.scalar_one_or_none()
-        if not channel:
+        channel_creator_pair = result.first()
+        
+        if not channel_creator_pair:
             logger.warning(
                 f"Channel with ID {channel_id} not found or does not belong to user {user_id}"
             )
             return None
+            
+        channel, creator = channel_creator_pair
+        
         try:
             update_data = {
                 k: v for k, v in channel_update.model_dump().items() if v is not None
@@ -157,7 +208,7 @@ class ChannelsService:
             await db.commit()
             await db.refresh(channel)
             logger.info(f"Channel {channel.name} updated for user {user_id}")
-            return channel
+            return self._create_channel_response(channel, creator)
         except Exception as e:
             logger.error(f"Error updating channel with ID {channel_id}: {e}")
             await db.rollback()

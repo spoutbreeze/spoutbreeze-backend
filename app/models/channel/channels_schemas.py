@@ -35,6 +35,8 @@ class ChannelResponse(ChannelBase):
 
     id: UUID
     creator_id: UUID
+    creator_first_name: str
+    creator_last_name: str
     created_at: datetime
     updated_at: datetime
 
