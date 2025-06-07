@@ -248,41 +248,41 @@ class ChannelsService:
             await db.rollback()
             raise
 
-    async def get_or_create_channel(
-        self,
-        db: AsyncSession,
-        name: str,
-        user_id: UUID,
-    ) -> ChannelResponse:
-        """
-        Get or create a channel.
-        """
-        try:
-            # Check if channel exists with creator info
-            result = await db.execute(
-                select(Channel, User)
-                .join(User, Channel.creator_id == User.id)
-                .where(
-                    Channel.name == name,
-                    Channel.creator_id == user_id,
-                )
-            )
-            channel_creator_pair = result.first()
+    # async def get_or_create_channel(
+    #     self,
+    #     db: AsyncSession,
+    #     name: str,
+    #     user_id: UUID,
+    # ) -> ChannelResponse:
+    #     """
+    #     Get or create a channel.
+    #     """
+    #     try:
+    #         # Check if channel exists with creator info
+    #         result = await db.execute(
+    #             select(Channel, User)
+    #             .join(User, Channel.creator_id == User.id)
+    #             .where(
+    #                 Channel.name == name,
+    #                 Channel.creator_id == user_id,
+    #             )
+    #         )
+    #         channel_creator_pair = result.first()
 
-            if channel_creator_pair:
-                channel, creator = channel_creator_pair
-                logger.info(f"Channel {channel.name} already exists for user {user_id}")
-                return self._create_channel_response(channel, creator)
-            else:
-                channel_create = ChannelCreate(name=name)
-                result = await self.create_channel(db, channel_create, user_id)
-                logger.info(f"Channel {name} created for user {user_id}")
-                return result
-        except Exception as e:
-            logger.error(
-                f"Error getting or creating channel {name} for user {user_id}: {e}"
-            )
-            raise
+    #         if channel_creator_pair:
+    #             channel, creator = channel_creator_pair
+    #             logger.info(f"Channel {channel.name} already exists for user {user_id}")
+    #             return self._create_channel_response(channel, creator)
+    #         else:
+    #             channel_create = ChannelCreate(name=name)
+    #             new_channel = await self.create_channel(db, channel_create, user_id)
+    #             logger.info(f"Channel {name} created for user {user_id}")
+    #             return new_channel
+    #     except Exception as e:
+    #         logger.error(
+    #             f"Error getting or creating channel {name} for user {user_id}: {e}"
+    #         )
+    #         raise
 
     async def get_channel_recordings(
         self,
