@@ -1,20 +1,38 @@
-from sqlalchemy import Column, String, ForeignKey, DateTime
-from datetime import datetime
+from __future__ import annotations
 import uuid
+from datetime import datetime
+from typing import TYPE_CHECKING
+
+from sqlalchemy import String, ForeignKey, DateTime
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.config.database.session import Base
+
+if TYPE_CHECKING:
+    from app.models.user_models import User
 
 
 class StreamSettings(Base):
     __tablename__ = "stream_endpoints"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    title = Column(String, nullable=False)
-    rtmp_url = Column(String, nullable=False)
-    stream_key = Column(String, nullable=False, unique=True)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        index=True,
+        nullable=False,
+    )
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    rtmp_url: Mapped[str] = mapped_column(String, nullable=False)
+    stream_key: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now, onupdate=datetime.now, nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
 
-    user = relationship("User", back_populates="stream_settings")
+    user: Mapped["User"] = relationship("User", back_populates="stream_settings")
