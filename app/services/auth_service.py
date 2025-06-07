@@ -53,7 +53,7 @@ class AuthService:
                     self.public_key,
                     algorithms=["RS256"],
                     options={
-                        "verify_aud": False, # Disable audience verification completely
+                        "verify_aud": False,  # Disable audience verification completely
                         "verify_exp": True,  # Keep expiration verification
                         "verify_iat": True,  # Verify issued at
                         "verify_nbf": True,  # Verify not before

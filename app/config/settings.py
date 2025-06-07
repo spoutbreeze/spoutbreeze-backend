@@ -2,8 +2,6 @@ from pydantic_settings import BaseSettings
 from functools import lru_cache
 from keycloak import KeycloakOpenID, KeycloakAdmin
 import os
-import ssl
-import urllib3
 
 
 class Settings(BaseSettings):

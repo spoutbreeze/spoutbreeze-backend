@@ -10,8 +10,8 @@ from app.models.bbb_models import BbbMeeting
 from app.models.channel.channels_model import Channel
 from app.models.stream_models import (
     StreamSettings,
-)  # assuming Base is the DeclarativeBase
-from app.models.event.event_models import Event  # assuming Base is the DeclarativeBase
+)
+from app.models.event.event_models import Event
 
 
 class User(Base):

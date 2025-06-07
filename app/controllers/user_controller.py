@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Path
-from typing import List, Dict, Any
+from typing import List
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -73,13 +73,13 @@ def get_current_user_roles(current_user: User = Depends(get_current_user)) -> Li
     Extract client roles from the current user's token payload
     """
     # Get the token payload that was stored in get_current_user
-    payload = getattr(current_user, '_token_payload', {})
-    
+    payload = getattr(current_user, "_token_payload", {})
+
     # Extract roles from resource_access for client roles
     resource_access = payload.get("resource_access", {})
     client_access = resource_access.get(settings.keycloak_client_id, {})
     roles = client_access.get("roles", [])
-    
+
     logger.info(f"User {current_user.username} roles: {roles}")
     return roles
 
@@ -88,13 +88,15 @@ def require_role(required_role: str):
     """
     Create a dependency that checks for a specific client role
     """
+
     def role_checker(roles: List[str] = Depends(get_current_user_roles)):
         if required_role not in roles:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, 
-                detail=f"Role '{required_role}' required to access this resource"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Role '{required_role}' required to access this resource",
             )
         return True
+
     return role_checker
 
 
@@ -102,13 +104,15 @@ def require_any_role(*required_roles: str):
     """
     Create a dependency that checks for any of the specified client roles
     """
+
     def role_checker(roles: List[str] = Depends(get_current_user_roles)):
         if not any(role in roles for role in required_roles):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, 
-                detail=f"One of these roles required: {', '.join(required_roles)}"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"One of these roles required: {', '.join(required_roles)}",
             )
         return True
+
     return role_checker
 
 

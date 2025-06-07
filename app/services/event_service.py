@@ -325,7 +325,9 @@ class EventService:
 
             event_responses = [self._create_event_response(event) for event in events]
 
-            logger.info(f"Retrieved {len(event_responses)} events with status {status.value}")
+            logger.info(
+                f"Retrieved {len(event_responses)} events with status {status.value}"
+            )
             return event_responses
 
         except Exception as e:
@@ -500,7 +502,9 @@ class EventService:
 
             event_responses = [self._create_event_response(event) for event in events]
 
-            logger.info(f"Retrieved {len(event_responses)} events for channel ID {channel_id}")
+            logger.info(
+                f"Retrieved {len(event_responses)} events for channel ID {channel_id}"
+            )
             return event_responses
         except Exception as e:
             logger.error(f"Error retrieving events for channel ID {channel_id}: {e}")
