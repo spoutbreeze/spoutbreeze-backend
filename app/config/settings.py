@@ -2,6 +2,8 @@ from pydantic_settings import BaseSettings
 from functools import lru_cache
 from keycloak import KeycloakOpenID, KeycloakAdmin
 import os
+import ssl
+import urllib3
 
 
 class Settings(BaseSettings):
@@ -55,13 +57,18 @@ keycloak_openid = KeycloakOpenID(
     client_id=get_settings().keycloak_client_id,
     realm_name=get_settings().keycloak_realm,
     client_secret_key=get_settings().keycloak_client_secret,
+    # verify=False,  # Disable SSL verification for development
 )
+
+# Also disable SSL warnings
+# urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 keycloak_admin = KeycloakAdmin(
     server_url=get_settings().keycloak_server_url,
     realm_name=get_settings().keycloak_realm,
     client_id=get_settings().keycloak_client_id,
     client_secret_key=get_settings().keycloak_client_secret,
+    # verify=False,  # Disable SSL verification for development
 )
 
 # Get OIDC config
