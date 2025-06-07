@@ -10,7 +10,6 @@ from app.models.stream_schemas import (
     StreamSettingsResponse,
     StreamSettingsUpdate,
     CreateStreamSettingsCreate,
-    StreamSettingsListResponse,
     StreamSettingsDeleteResponse,
 )
 from app.services.stream_service import StreamService
@@ -51,7 +50,7 @@ async def create_stream_settings(
 async def get_stream_settings(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[StreamSettingsListResponse]:
+) -> List[StreamSettingsResponse]:
     """
     Get all stream settings for the current user.
 

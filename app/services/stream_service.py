@@ -2,7 +2,6 @@ from app.models.stream_models import StreamSettings
 from app.models.user_models import User
 from app.models.stream_schemas import (
     StreamSettingsResponse,
-    StreamSettingsListResponse,
     StreamSettingsUpdate,
     CreateStreamSettingsCreate,
     StreamSettingsDeleteResponse,
@@ -20,7 +19,9 @@ class StreamService:
     Service for creating the stream settings
     """
 
-    def _create_stream_settings_response(self, stream_settings: StreamSettings, user: User) -> StreamSettingsResponse:
+    def _create_stream_settings_response(
+        self, stream_settings: StreamSettings, user: User
+    ) -> StreamSettingsResponse:
         """
         Create a StreamSettingsResponse with user information.
         """
@@ -57,9 +58,7 @@ class StreamService:
             await db.refresh(new_stream_settings)
 
             # Get the user information
-            user_result = await db.execute(
-                select(User).where(User.id == user_id)
-            )
+            user_result = await db.execute(select(User).where(User.id == user_id))
             user = user_result.scalar_one()
 
             logger.info(
@@ -80,8 +79,9 @@ class StreamService:
         """
         try:
             result = await db.execute(
-                select(StreamSettings, User)
-                .join(User, StreamSettings.user_id == User.id)
+                select(StreamSettings, User).join(
+                    User, StreamSettings.user_id == User.id
+                )
             )
             stream_settings_user_pairs = result.all()
 
@@ -117,7 +117,9 @@ class StreamService:
                 for stream_settings, user in stream_settings_user_pairs
             ]
 
-            logger.info(f"Retrieved {len(stream_settings_list)} stream settings for user {user_id}")
+            logger.info(
+                f"Retrieved {len(stream_settings_list)} stream settings for user {user_id}"
+            )
             return stream_settings_list
         except Exception as e:
             logger.error(f"Error retrieving stream settings for user {user_id}: {e}")
@@ -144,10 +146,14 @@ class StreamService:
                 logger.info(f"Stream settings retrieved with ID {stream_settings_id}")
                 return self._create_stream_settings_response(stream_settings, user)
             else:
-                logger.warning(f"Stream settings with ID {stream_settings_id} not found")
+                logger.warning(
+                    f"Stream settings with ID {stream_settings_id} not found"
+                )
                 return None
         except Exception as e:
-            logger.error(f"Error retrieving stream settings with ID {stream_settings_id}: {e}")
+            logger.error(
+                f"Error retrieving stream settings with ID {stream_settings_id}: {e}"
+            )
             raise
 
     async def update_stream_settings(
@@ -167,18 +173,22 @@ class StreamService:
                 .where(StreamSettings.id == stream_settings_id)
             )
             stream_settings_user_pair = result.first()
-            
+
             if not stream_settings_user_pair:
-                logger.warning(f"Stream settings with ID {stream_settings_id} not found")
+                logger.warning(
+                    f"Stream settings with ID {stream_settings_id} not found"
+                )
                 return None
 
             stream_settings, user = stream_settings_user_pair
 
             # Update the stream settings
             update_data = {
-                k: v for k, v in stream_settings_update.model_dump().items() if v is not None
+                k: v
+                for k, v in stream_settings_update.model_dump().items()
+                if v is not None
             }
-            
+
             if update_data:
                 update_stmt = (
                     update(StreamSettings)
@@ -194,7 +204,9 @@ class StreamService:
             )
             return self._create_stream_settings_response(stream_settings, user)
         except Exception as e:
-            logger.error(f"Error updating stream settings with ID {stream_settings_id}: {e}")
+            logger.error(
+                f"Error updating stream settings with ID {stream_settings_id}: {e}"
+            )
             await db.rollback()
             raise
 
@@ -216,7 +228,9 @@ class StreamService:
             result = await db.execute(select_stmt)
             stream_settings = result.scalars().first()
             if not stream_settings:
-                logger.warning(f"Stream settings with ID {stream_settings_id} not found")
+                logger.warning(
+                    f"Stream settings with ID {stream_settings_id} not found"
+                )
                 return None
 
             # Delete the stream settings
@@ -233,6 +247,8 @@ class StreamService:
                 id=stream_settings_id,
             )
         except Exception as e:
-            logger.error(f"Error deleting stream settings with ID {stream_settings_id}: {e}")
+            logger.error(
+                f"Error deleting stream settings with ID {stream_settings_id}: {e}"
+            )
             await db.rollback()
             raise

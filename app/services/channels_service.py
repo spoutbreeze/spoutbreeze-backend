@@ -10,7 +10,6 @@ from typing import List, Optional, Dict, Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
-from sqlalchemy.orm import selectinload
 from app.config.logger_config import logger
 
 
@@ -19,7 +18,9 @@ class ChannelsService:
     Service class for managing channels.
     """
 
-    def _create_channel_response(self, channel: Channel, creator: User) -> ChannelResponse:
+    def _create_channel_response(
+        self, channel: Channel, creator: User
+    ) -> ChannelResponse:
         """
         Create a ChannelResponse with creator information.
         """
@@ -50,13 +51,11 @@ class ChannelsService:
             db.add(new_channel)
             await db.commit()
             await db.refresh(new_channel)
-            
+
             # Get the creator information
-            creator_result = await db.execute(
-                select(User).where(User.id == user_id)
-            )
+            creator_result = await db.execute(select(User).where(User.id == user_id))
             creator = creator_result.scalar_one()
-            
+
             logger.info(f"Channel {new_channel.name} created for user {user_id}")
             return self._create_channel_response(new_channel, creator)
         except Exception as e:
@@ -79,12 +78,12 @@ class ChannelsService:
                 .where(Channel.creator_id == user_id)
             )
             channel_creator_pairs = result.all()
-            
+
             channels = [
                 self._create_channel_response(channel, creator)
                 for channel, creator in channel_creator_pairs
             ]
-            
+
             logger.info(f"Retrieved {len(channels)} channels for user {user_id}")
             return channels
         except Exception as e:
@@ -106,7 +105,7 @@ class ChannelsService:
                 .where(Channel.id == channel_id)
             )
             channel_creator_pair = result.first()
-            
+
             if channel_creator_pair:
                 channel, creator = channel_creator_pair
                 logger.info(f"Retrieved channel {channel.name} with ID {channel_id}")
@@ -127,16 +126,15 @@ class ChannelsService:
         """
         try:
             result = await db.execute(
-                select(Channel, User)
-                .join(User, Channel.creator_id == User.id)
+                select(Channel, User).join(User, Channel.creator_id == User.id)
             )
             channel_creator_pairs = result.all()
-            
+
             channels = [
                 self._create_channel_response(channel, creator)
                 for channel, creator in channel_creator_pairs
             ]
-            
+
             logger.info(f"Retrieved {len(channels)} channels")
             return channels
         except Exception as e:
@@ -182,21 +180,25 @@ class ChannelsService:
         Update a channel by ID.
         """
         #  Check if the channel exists and belongs to the user
-        query = select(Channel, User).join(User, Channel.creator_id == User.id).where(
-            Channel.id == channel_id,
-            Channel.creator_id == user_id,
+        query = (
+            select(Channel, User)
+            .join(User, Channel.creator_id == User.id)
+            .where(
+                Channel.id == channel_id,
+                Channel.creator_id == user_id,
+            )
         )
         result = await db.execute(query)
         channel_creator_pair = result.first()
-        
+
         if not channel_creator_pair:
             logger.warning(
                 f"Channel with ID {channel_id} not found or does not belong to user {user_id}"
             )
             return None
-            
+
         channel, creator = channel_creator_pair
-        
+
         try:
             update_data = {
                 k: v for k, v in channel_update.model_dump().items() if v is not None
@@ -251,7 +253,7 @@ class ChannelsService:
         db: AsyncSession,
         name: str,
         user_id: UUID,
-    ) -> Channel:
+    ) -> ChannelResponse:
         """
         Get or create a channel.
         """
