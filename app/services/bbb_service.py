@@ -44,6 +44,17 @@ class BBBService:
         if not request.meeting_id:
             request.meeting_id = f"meeting-{int(time.time())}"
 
+        # Check if meeting ID already exists in the database
+        stmt = select(BbbMeeting).where(BbbMeeting.meeting_id == request.meeting_id)
+        result = await db.execute(stmt)
+        existing_meeting = result.scalars().first()
+
+        if existing_meeting:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Meeting ID '{request.meeting_id}' is already in use. Please choose a different meeting ID.",
+            )
+
         # Prepare parameters for BBB API
         params = {
             "name": request.name,
