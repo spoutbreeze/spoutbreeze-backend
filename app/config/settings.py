@@ -21,12 +21,18 @@ class Settings(BaseSettings):
     # Broadcaster service settings
     broadcaster_api_url: str
 
-    # Twitch settings
+    # Twitch IRC settings
     twitch_server: str
     twitch_port: int
     twitch_nick: str
-    twitch_token: str
     twitch_channel: str
+
+    # Twitch OAuth credentials flow settings
+    twitch_redirect_uri: str
+    twitch_client_id: str
+    twitch_client_secret: str
+    twitch_token_url: str
+    # twitch_user_access_token: str
 
     # Database settings
     db_url: str

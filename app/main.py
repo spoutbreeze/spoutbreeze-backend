@@ -16,9 +16,10 @@ from app.controllers.stream_controller import router as stream_router
 from app.controllers.channels_controller import router as channels_router
 from app.controllers.event_controller import router as event_router
 from app.controllers.health_controller import router as health_router
+from app.controllers.twitch_controller import router as twitch_router
 
 from app.config.chat_manager import chat_manager
-from app.config.twitch_irc import twitch_client
+from app.config.twitch_irc import TwitchIRCClient
 from app.config.logger_config import get_logger
 from app.config.settings import get_settings
 import asyncio
@@ -27,6 +28,7 @@ logger = get_logger("Twitch")
 setting = get_settings()
 scheduler = AsyncIOScheduler()
 bbb_service = BBBService()
+twitch_client = TwitchIRCClient()
 
 
 @asynccontextmanager
@@ -61,8 +63,13 @@ async def lifespan(app: FastAPI):
     app.openapi_schema = openapi_schema
 
     # Startup: schedule the IRC client
-    task = asyncio.create_task(twitch_client.connect())
-    logger.info("[TwitchIRC] Background connect task scheduled")
+    twitch_tasks = asyncio.gather(
+        twitch_client.connect(),
+        twitch_client.start_token_refresh_scheduler(),
+        return_exceptions=True,
+    )
+
+    logger.info("[TwitchIRC] Background connect and token refresh tasks scheduled")
 
     # Set up scheduler for bbb meeting cleanup
     scheduler.add_job(
@@ -80,9 +87,9 @@ async def lifespan(app: FastAPI):
     yield  # App is running
 
     # Shutdown: cancel the IRC task
-    task.cancel()
+    twitch_tasks.cancel()
     try:
-        await task
+        await twitch_tasks
     except asyncio.CancelledError:
         logger.info("[TwitchIRC] Connect task cancelled cleanly")
 
@@ -151,6 +158,7 @@ async def root():
 # Include routers
 app.include_router(health_router)
 app.include_router(auth_router)
+app.include_router(twitch_router)
 app.include_router(user_router)
 app.include_router(channels_router)
 app.include_router(event_router)
