@@ -13,9 +13,7 @@ auth_service = AuthService()
 
 
 @router.get("/health")
-async def health_check(
-    response: Response, db: AsyncSession = Depends(get_db)
-) -> Dict[str, Any]:
+async def health_check(response: Response) -> Dict[str, Any]:
     """
     Comprehensive health check endpoint
     """
@@ -24,20 +22,13 @@ async def health_check(
         "timestamp": datetime.now().isoformat(),
         "services": {},
     }
+    
     # Check Keycloak
     keycloak_healthy = auth_service.health_check()
     health_status["services"]["keycloak"] = {
         "status": "healthy" if keycloak_healthy else "unhealthy",
         "url": auth_service.settings.keycloak_server_url,
     }
-
-    # Check Database
-    try:
-        await db.execute(text("SELECT 1"))
-        health_status["services"]["database"] = {"status": "healthy"}
-    except Exception as e:
-        health_status["services"]["database"] = {"status": "unhealthy", "error": str(e)}
-        health_status["status"] = "degraded"
 
     # Overall status
     if not keycloak_healthy:
@@ -51,23 +42,15 @@ async def health_check(
 
 
 @router.get("/health/ready")
-async def readiness_check(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
+async def readiness_check() -> Dict[str, Any]:
     """
     Readiness check - determines if the application is ready to serve traffic
     """
     keycloak_ready = auth_service.health_check()
 
-    try:
-        await db.execute(text("SELECT 1"))
-        db_ready = True
-    except Exception:
-        db_ready = False
-
-    ready = keycloak_ready and db_ready
-
     return {
-        "status": "ready" if ready else "not ready",
-        "services": {"keycloak": keycloak_ready, "database": db_ready},
+        "status": "ready" if keycloak_ready else "not ready",
+        "services": {"keycloak": keycloak_ready},
     }
 
 
@@ -77,3 +60,26 @@ async def liveness_check() -> Dict[str, str]:
     Liveness check - determines if the application is alive
     """
     return {"status": "alive", "timestamp": datetime.now().isoformat()}
+
+
+@router.get("/health/database")
+async def database_health_check(
+    response: Response, db: AsyncSession = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Database-specific health check endpoint
+    """
+    try:
+        await db.execute(text("SELECT 1"))
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "database": {"status": "healthy"}
+        }
+    except Exception as e:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {
+            "status": "unhealthy",
+            "timestamp": datetime.now().isoformat(),
+            "database": {"status": "unhealthy", "error": str(e)}
+        }
