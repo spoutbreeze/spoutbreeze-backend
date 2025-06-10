@@ -16,6 +16,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Create certificate file
+        run: |
+          mkdir -p certs
+          echo "${{ secrets.KEYCLOAK_CERT }}" > certs/keycloak.pem
+
       - name: Log in to DockerHub
         uses: docker/login-action@v3
         with:

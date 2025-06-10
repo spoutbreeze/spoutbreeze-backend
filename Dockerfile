@@ -20,6 +20,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application code
 COPY . .
 
+# Ensure certs directory exists and has proper permissions
+RUN mkdir -p certs && chmod 777 certs
+
 # Expose the port the app runs on
 EXPOSE 8000
 
