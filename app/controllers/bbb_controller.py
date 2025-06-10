@@ -2,7 +2,7 @@ from fastapi import APIRouter, Body, Depends, Request, BackgroundTasks, HTTPExce
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config.database.session import get_db
 from app.services.bbb_service import BBBService
-from app.services.stream_service import StreamService
+from app.services.stream_service import RtmpEndpointService
 from app.models.bbb_schemas import (
     CreateMeetingRequest,
     JoinMeetingRequest,
@@ -122,8 +122,8 @@ async def get_stream_endpoints_proxy(
     """
     try:
         # Get all available stream settings
-        stream_service = StreamService()
-        stream_settings = await stream_service.get_all_stream_settings(db=db)
+        rtmp_service = RtmpEndpointService()
+        stream_settings = await rtmp_service.get_all_stream_settings(db=db)
 
         return stream_settings
 
