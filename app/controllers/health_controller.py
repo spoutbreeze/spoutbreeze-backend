@@ -66,7 +66,7 @@ async def readiness_check(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
     ready = keycloak_ready and db_ready
 
     return {
-        "ready": ready,
+        "status": "ready" if ready else "not ready",
         "services": {"keycloak": keycloak_ready, "database": db_ready},
     }
 
