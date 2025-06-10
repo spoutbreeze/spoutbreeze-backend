@@ -78,11 +78,11 @@ keycloak_openid = KeycloakOpenID(
     client_id=get_settings().keycloak_client_id,
     realm_name=get_settings().keycloak_realm,
     client_secret_key=get_settings().keycloak_client_secret,
-    # verify=verify_ssl,
-    verify=False,
+    verify=verify_ssl,
+    # verify=False,
 )
 
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 keycloak_admin = KeycloakAdmin(
@@ -90,8 +90,8 @@ keycloak_admin = KeycloakAdmin(
     realm_name=get_settings().keycloak_realm,
     client_id=get_settings().keycloak_client_id,
     client_secret_key=get_settings().keycloak_client_secret,
-    # verify=verify_ssl,
-    verify=False,
+    verify=verify_ssl,
+    # verify=False,
 )
 
 # Get OIDC config

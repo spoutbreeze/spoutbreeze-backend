@@ -30,3 +30,10 @@ archive.zip
 
 # macOS
 .DS_Store
+
+certs/
+*.pem
+*.crt
+*.key
+*.p12
+*.pfx
