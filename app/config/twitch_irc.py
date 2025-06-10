@@ -52,7 +52,12 @@ class TwitchIRCClient:
                         status_code=401,
                         detail="No valid Twitch token found. Please authenticate via /auth/twitch/login",
                     )
-                break
+
+            # This should never be reached due to the logic above, but mypy needs it
+            raise HTTPException(
+                status_code=500, 
+                detail="Unexpected error: database session not available"
+            )
 
         except HTTPException:
             raise
