@@ -33,7 +33,6 @@ class Settings(BaseSettings):
     twitch_client_id: str
     twitch_client_secret: str
     twitch_token_url: str
-    # twitch_user_access_token: str
 
     # Database settings
     db_url: str
@@ -42,7 +41,7 @@ class Settings(BaseSettings):
     env: str = "development"
 
     # SSL settings
-    ssl_cert_file: str = "certs/keycloak.crt"
+    ssl_cert_file: str = "certs/keycloak.pem"  # Changed from .crt to .pem
     ssl_verify: bool = True
 
     # Api base url
@@ -62,37 +61,32 @@ def get_settings():
 
 settings = get_settings()
 
-if settings.env == "development" and os.path.exists(settings.ssl_cert_file):
-    # Use custom certificate for development with proper SSL
-    verify_ssl = settings.ssl_cert_file
-elif settings.env == "production":
-    # Use system CA bundle for production
-    verify_ssl = True
+# Determine SSL verification method
+cert_path = "/app/certs/keycloak.pem"
+if os.path.exists(cert_path):
+    # Use the certificate file if it exists
+    verify_ssl = cert_path
+    print(f"Using SSL certificate: {cert_path}")
 else:
-    # Fallback to no verification for local development
+    # Disable SSL verification for development
     verify_ssl = False
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Keycloak configuration
 keycloak_openid = KeycloakOpenID(
-    server_url=get_settings().keycloak_server_url,
-    client_id=get_settings().keycloak_client_id,
-    realm_name=get_settings().keycloak_realm,
-    client_secret_key=get_settings().keycloak_client_secret,
+    server_url=settings.keycloak_server_url,
+    client_id=settings.keycloak_client_id,
+    realm_name=settings.keycloak_realm,
+    client_secret_key=settings.keycloak_client_secret,
     verify=verify_ssl,
-    # verify=False,
 )
 
-# urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-
 keycloak_admin = KeycloakAdmin(
-    server_url=get_settings().keycloak_server_url,
-    realm_name=get_settings().keycloak_realm,
-    client_id=get_settings().keycloak_client_id,
-    client_secret_key=get_settings().keycloak_client_secret,
+    server_url=settings.keycloak_server_url,
+    realm_name=settings.keycloak_realm,
+    client_id=settings.keycloak_client_id,
+    client_secret_key=settings.keycloak_client_secret,
     verify=verify_ssl,
-    # verify=False,
 )
 
 # Get OIDC config
