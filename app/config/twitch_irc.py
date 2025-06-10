@@ -3,6 +3,7 @@ import httpx
 from datetime import datetime, timedelta
 from sqlalchemy import select
 from fastapi import HTTPException
+from typing import Optional, Dict, Any
 
 from app.config.chat_manager import chat_manager
 from app.config.settings import get_settings
@@ -51,6 +52,7 @@ class TwitchIRCClient:
                         status_code=401,
                         detail="No valid Twitch token found. Please authenticate via /auth/twitch/login",
                     )
+                break
 
         except HTTPException:
             raise
@@ -129,7 +131,7 @@ class TwitchIRCClient:
         except Exception as e:
             logger.error(f"[TwitchIRC] Error checking/refreshing token: {e}")
 
-    async def _refresh_access_token(self, refresh_token: str) -> dict | None:
+    async def _refresh_access_token(self, refresh_token: str) -> Optional[Dict[str, Any]]:
         """Refresh the access token using the refresh token"""
         try:
             async with httpx.AsyncClient() as client:

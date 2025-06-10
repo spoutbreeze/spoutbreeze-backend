@@ -321,7 +321,7 @@ class TestStreamController:
         """Test updating stream settings with empty data"""
         app.dependency_overrides[get_current_user] = mock_current_user
 
-        update_data = {}
+        update_data: dict[str, str] = {}
 
         response = await client.put(
             f"/api/stream-endpoint/{test_stream_settings.id}", 
