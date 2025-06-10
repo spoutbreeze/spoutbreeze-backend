@@ -40,7 +40,7 @@ class Settings(BaseSettings):
 
     # Environment settings
     env: str = "development"
-    
+
     # SSL settings
     ssl_cert_file: str = "certs/keycloak.crt"
     ssl_verify: bool = True
@@ -58,6 +58,7 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings():
     return Settings()
+
 
 settings = get_settings()
 

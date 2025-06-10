@@ -21,7 +21,7 @@ class TestStreamController:
         stream_data = {
             "title": "Test Stream",
             "stream_key": "test-stream-key",
-            "rtmp_url": "rtmp://test.example.com/live"
+            "rtmp_url": "rtmp://test.example.com/live",
         }
 
         response = await client.post("/api/stream-endpoint/create", json=stream_data)
@@ -57,11 +57,11 @@ class TestStreamController:
 
     @pytest.mark.asyncio
     async def test_get_stream_settings_by_user(
-        self, 
-        client: AsyncClient, 
-        test_user: User, 
+        self,
+        client: AsyncClient,
+        test_user: User,
         test_stream_settings: StreamSettings,
-        mock_current_user
+        mock_current_user,
     ):
         """Test getting stream settings for current user"""
         app.dependency_overrides[get_current_user] = mock_current_user
@@ -93,11 +93,11 @@ class TestStreamController:
 
     @pytest.mark.asyncio
     async def test_get_stream_settings_by_id_success(
-        self, 
-        client: AsyncClient, 
+        self,
+        client: AsyncClient,
         test_user: User,
         test_stream_settings: StreamSettings,
-        mock_current_user
+        mock_current_user,
     ):
         """Test getting stream settings by ID"""
         app.dependency_overrides[get_current_user] = mock_current_user
@@ -128,23 +128,22 @@ class TestStreamController:
 
     @pytest.mark.asyncio
     async def test_update_stream_settings_success(
-        self, 
-        client: AsyncClient, 
+        self,
+        client: AsyncClient,
         test_user: User,
         test_stream_settings: StreamSettings,
-        mock_current_user
+        mock_current_user,
     ):
         """Test successful stream settings update"""
         app.dependency_overrides[get_current_user] = mock_current_user
 
         update_data = {
             "title": "Updated Stream Title",
-            "rtmp_url": "rtmp://updated.example.com/live"
+            "rtmp_url": "rtmp://updated.example.com/live",
         }
 
         response = await client.put(
-            f"/api/stream-endpoint/{test_stream_settings.id}", 
-            json=update_data
+            f"/api/stream-endpoint/{test_stream_settings.id}", json=update_data
         )
 
         assert response.status_code == 200
@@ -156,11 +155,11 @@ class TestStreamController:
 
     @pytest.mark.asyncio
     async def test_update_stream_settings_partial(
-        self, 
-        client: AsyncClient, 
+        self,
+        client: AsyncClient,
         test_user: User,
         test_stream_settings: StreamSettings,
-        mock_current_user
+        mock_current_user,
     ):
         """Test partial update of stream settings"""
         app.dependency_overrides[get_current_user] = mock_current_user
@@ -171,8 +170,7 @@ class TestStreamController:
         }
 
         response = await client.put(
-            f"/api/stream-endpoint/{test_stream_settings.id}", 
-            json=update_data
+            f"/api/stream-endpoint/{test_stream_settings.id}", json=update_data
         )
 
         assert response.status_code == 200
@@ -189,13 +187,10 @@ class TestStreamController:
         app.dependency_overrides[get_current_user] = mock_current_user
 
         non_existent_id = uuid4()
-        update_data = {
-            "title": "Updated Title"
-        }
+        update_data = {"title": "Updated Title"}
 
         response = await client.put(
-            f"/api/stream-endpoint/{non_existent_id}", 
-            json=update_data
+            f"/api/stream-endpoint/{non_existent_id}", json=update_data
         )
 
         assert response.status_code == 404
@@ -204,16 +199,18 @@ class TestStreamController:
 
     @pytest.mark.asyncio
     async def test_delete_stream_settings_success(
-        self, 
-        client: AsyncClient, 
+        self,
+        client: AsyncClient,
         test_user: User,
         test_stream_settings: StreamSettings,
-        mock_current_user
+        mock_current_user,
     ):
         """Test successful stream settings deletion"""
         app.dependency_overrides[get_current_user] = mock_current_user
 
-        response = await client.delete(f"/api/stream-endpoint/{test_stream_settings.id}")
+        response = await client.delete(
+            f"/api/stream-endpoint/{test_stream_settings.id}"
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -236,11 +233,11 @@ class TestStreamController:
 
     @pytest.mark.asyncio
     async def test_delete_stream_settings_unauthorized_user(
-        self, 
-        client: AsyncClient, 
+        self,
+        client: AsyncClient,
         test_stream_settings: StreamSettings,
         mock_current_user,
-        db_session
+        db_session,
     ):
         """Test deleting stream settings as unauthorized user"""
         # Create a different user
@@ -261,7 +258,9 @@ class TestStreamController:
 
         app.dependency_overrides[get_current_user] = mock_different_user
 
-        response = await client.delete(f"/api/stream-endpoint/{test_stream_settings.id}")
+        response = await client.delete(
+            f"/api/stream-endpoint/{test_stream_settings.id}"
+        )
 
         assert response.status_code == 404
         data = response.json()
@@ -278,7 +277,7 @@ class TestStreamController:
         stream_data_1 = {
             "title": "Stream 1",
             "stream_key": "key-1",
-            "rtmp_url": "rtmp://test1.example.com/live"
+            "rtmp_url": "rtmp://test1.example.com/live",
         }
         response1 = await client.post("/api/stream-endpoint/create", json=stream_data_1)
         assert response1.status_code == 200
@@ -287,7 +286,7 @@ class TestStreamController:
         stream_data_2 = {
             "title": "Stream 2",
             "stream_key": "key-2",
-            "rtmp_url": "rtmp://test2.example.com/live"
+            "rtmp_url": "rtmp://test2.example.com/live",
         }
         response2 = await client.post("/api/stream-endpoint/create", json=stream_data_2)
         assert response2.status_code == 200
@@ -312,11 +311,11 @@ class TestStreamController:
 
     @pytest.mark.asyncio
     async def test_update_with_empty_data(
-        self, 
-        client: AsyncClient, 
+        self,
+        client: AsyncClient,
         test_user: User,
         test_stream_settings: StreamSettings,
-        mock_current_user
+        mock_current_user,
     ):
         """Test updating stream settings with empty data"""
         app.dependency_overrides[get_current_user] = mock_current_user
@@ -324,8 +323,7 @@ class TestStreamController:
         update_data: dict[str, str] = {}
 
         response = await client.put(
-            f"/api/stream-endpoint/{test_stream_settings.id}", 
-            json=update_data
+            f"/api/stream-endpoint/{test_stream_settings.id}", json=update_data
         )
 
         assert response.status_code == 200

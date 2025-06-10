@@ -55,8 +55,8 @@ class TwitchIRCClient:
 
             # This should never be reached due to the logic above, but mypy needs it
             raise HTTPException(
-                status_code=500, 
-                detail="Unexpected error: database session not available"
+                status_code=500,
+                detail="Unexpected error: database session not available",
             )
 
         except HTTPException:
@@ -136,7 +136,9 @@ class TwitchIRCClient:
         except Exception as e:
             logger.error(f"[TwitchIRC] Error checking/refreshing token: {e}")
 
-    async def _refresh_access_token(self, refresh_token: str) -> Optional[Dict[str, Any]]:
+    async def _refresh_access_token(
+        self, refresh_token: str
+    ) -> Optional[Dict[str, Any]]:
         """Refresh the access token using the refresh token"""
         try:
             async with httpx.AsyncClient() as client:
