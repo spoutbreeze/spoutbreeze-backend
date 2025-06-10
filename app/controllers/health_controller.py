@@ -12,33 +12,48 @@ router = APIRouter(prefix="/api", tags=["Health"])
 auth_service = AuthService()
 
 
+# @router.get("/health")
+# async def health_check(response: Response) -> Dict[str, Any]:
+#     """
+#     Comprehensive health check endpoint
+#     """
+#     health_status: Dict[str, Any] = {
+#         "status": "healthy",
+#         "timestamp": datetime.now().isoformat(),
+#         "services": {},
+#     }
+
+#     # Check Keycloak
+#     keycloak_healthy = auth_service.health_check()
+#     health_status["services"]["keycloak"] = {
+#         "status": "healthy" if keycloak_healthy else "unhealthy",
+#         "url": auth_service.settings.keycloak_server_url,
+#     }
+
+#     # Overall status
+#     if not keycloak_healthy:
+#         health_status["status"] = "degraded"
+
+#     # Set appropriate status code
+#     if health_status["status"] != "healthy":
+#         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+#     return health_status
+
+
 @router.get("/health")
-async def health_check(response: Response) -> Dict[str, Any]:
+async def health_check(response: Response) -> Dict[str, str]:
     """
-    Comprehensive health check endpoint
+    Simple health check endpoint that verifies Keycloak connectivity
     """
-    health_status: Dict[str, Any] = {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "services": {},
-    }
-    
     # Check Keycloak
     keycloak_healthy = auth_service.health_check()
-    health_status["services"]["keycloak"] = {
-        "status": "healthy" if keycloak_healthy else "unhealthy",
-        "url": auth_service.settings.keycloak_server_url,
-    }
 
-    # Overall status
-    if not keycloak_healthy:
-        health_status["status"] = "degraded"
-
-    # Set appropriate status code
-    if health_status["status"] != "healthy":
+    if keycloak_healthy:
+        return {"status": "healthy"}
+    else:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-
-    return health_status
+        return {"status": "unhealthy"}
 
 
 @router.get("/health/ready")
@@ -50,7 +65,7 @@ async def readiness_check() -> Dict[str, Any]:
 
     return {
         "status": "ready" if keycloak_ready else "not ready",
-        "services": {"keycloak": keycloak_ready},
+        # "services": {"keycloak": keycloak_ready},
     }
 
 
@@ -74,12 +89,12 @@ async def database_health_check(
         return {
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
-            "database": {"status": "healthy"}
+            "database": {"status": "healthy"},
         }
     except Exception as e:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {
             "status": "unhealthy",
             "timestamp": datetime.now().isoformat(),
-            "database": {"status": "unhealthy", "error": str(e)}
+            "database": {"status": "unhealthy", "error": str(e)},
         }

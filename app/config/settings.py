@@ -3,6 +3,7 @@ from functools import lru_cache
 from keycloak import KeycloakOpenID, KeycloakAdmin
 import os
 import urllib3
+from typing import Union
 
 
 class Settings(BaseSettings):
@@ -63,6 +64,7 @@ settings = get_settings()
 
 # Determine SSL verification method
 cert_path = "/app/certs/keycloak.pem"
+verify_ssl: Union[str, bool]
 if os.path.exists(cert_path):
     # Use the certificate file if it exists
     verify_ssl = cert_path
