@@ -14,7 +14,7 @@ from sqlalchemy import select, update, delete
 from app.config.logger_config import logger
 
 
-class StreamService:
+class RtmpEndpointService:
     """
     Service for creating the stream settings
     """

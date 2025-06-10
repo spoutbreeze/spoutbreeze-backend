@@ -12,10 +12,10 @@ from app.models.stream_schemas import (
     CreateStreamSettingsCreate,
     StreamSettingsDeleteResponse,
 )
-from app.services.stream_service import StreamService
+from app.services.stream_service import RtmpEndpointService
 
 router = APIRouter(prefix="/api/stream-endpoint", tags=["Stream Endpoints"])
-stream_service = StreamService()
+rtmp_service = RtmpEndpointService()
 
 
 @router.post("/create", response_model=StreamSettingsResponse)
@@ -36,7 +36,7 @@ async def create_stream_settings(
         The created stream settings.
     """
     try:
-        new_stream_settings = await stream_service.create_stream_settings(
+        new_stream_settings = await rtmp_service.create_stream_settings(
             stream_settings=stream_settings,
             user_id=UUID(str(current_user.id)),
             db=db,
@@ -62,7 +62,7 @@ async def get_stream_settings(
         A list of stream settings.
     """
     try:
-        stream_settings = await stream_service.get_stream_settings_by_user_id(
+        stream_settings = await rtmp_service.get_stream_settings_by_user_id(
             user_id=UUID(str(current_user.id)),
             db=db,
         )
@@ -87,13 +87,16 @@ async def get_stream_settings_by_id(
         The stream settings.
     """
     try:
-        stream_settings = await stream_service.get_stream_settings_by_id(
+        stream_settings = await rtmp_service.get_stream_settings_by_id(
             stream_settings_id=stream_settings_id,
             db=db,
         )
         if not stream_settings:
             raise HTTPException(status_code=404, detail="Stream settings not found")
         return stream_settings
+    except HTTPException:
+        # Re-raise HTTPException without changing it
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -116,7 +119,7 @@ async def update_stream_settings(
         The updated stream settings.
     """
     try:
-        updated_stream_settings = await stream_service.update_stream_settings(
+        updated_stream_settings = await rtmp_service.update_stream_settings(
             stream_settings_id=stream_settings_id,
             stream_settings_update=stream_settings_update,
             db=db,
@@ -124,6 +127,9 @@ async def update_stream_settings(
         if not updated_stream_settings:
             raise HTTPException(status_code=404, detail="Stream settings not found")
         return updated_stream_settings
+    except HTTPException:
+        # Re-raise HTTPException without changing it
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -144,7 +150,7 @@ async def delete_stream_settings(
         The deleted stream settings.
     """
     try:
-        deleted_stream_settings = await stream_service.delete_stream_settings(
+        deleted_stream_settings = await rtmp_service.delete_stream_settings(
             stream_settings_id=stream_settings_id,
             user_id=UUID(str(current_user.id)),
             db=db,
@@ -152,5 +158,8 @@ async def delete_stream_settings(
         if not deleted_stream_settings:
             raise HTTPException(status_code=404, detail="Stream settings not found")
         return deleted_stream_settings
+    except HTTPException:
+        # Re-raise HTTPException without changing it
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
