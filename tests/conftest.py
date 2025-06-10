@@ -13,7 +13,7 @@ from app.models.channel.channels_model import Channel
 from app.models.stream_models import StreamSettings
 
 
-# Test database URL (use SQLite for simplicity in tests)
+# Test database URL (SQLite for simplicity in tests)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 
 # Create test engine
