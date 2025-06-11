@@ -42,15 +42,15 @@ class Settings(BaseSettings):
     env: str = "development"
 
     # SSL settings
-    ssl_cert_file: str = "certs/keycloak.pem"  # Changed from .crt to .pem
+    ssl_cert_file: str = "certs/keycloak.pem"
     ssl_verify: bool = True
 
-    # Api base url
-    api_base_url: str = os.getenv("API_BASE_URL", "http://localhost:8000")
+    # Api base url - Let Pydantic handle this
+    api_base_url: str = "http://localhost:8000"  # Default value
 
     # Admin credentials for Keycloak
-    keycloak_admin_username: str = "admin_firas"  # Add default or use env
-    keycloak_admin_password: str = "admin"  # Add default or use env
+    keycloak_admin_username: str = "admin"
+    keycloak_admin_password: str = "admin"
 
     model_config = {"env_file": ".env"}
 
