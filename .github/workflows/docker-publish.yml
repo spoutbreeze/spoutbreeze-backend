@@ -1,4 +1,4 @@
-name: Build and Push Docker image
+name: Build, Push and Deploy
 
 on:
   push:
@@ -11,6 +11,9 @@ jobs:
 
     env:
       IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/spoutbreeze-backend
+
+    outputs:
+      image-tag: ${{ env.TAG }}
 
     steps:
       - name: Checkout repository
@@ -42,35 +45,35 @@ jobs:
           tags: ${{ env.IMAGE_NAME }}:${{ env.TAG }}
 
   deploy:
-      needs: build-and-push
-      runs-on: ubuntu-latest
-      steps:
-        - name: Set up kubectl
-          uses: azure/setup-kubectl@v3
-          with:
-            version: 'latest'
-        
-        - name: Configure kubectl
-          run: |
-            mkdir -p ~/.kube
-            echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
-            chmod 600 ~/.kube/config
-        
-        - name: Test cluster connection
-          run: |
-            kubectl cluster-info
-            kubectl get nodes
-        
-        - name: Update deployment image
-          run: |
-            kubectl set image deployment/spoutbreeze-backend \
-              spoutbreeze-backend=${{ secrets.DOCKERHUB_USERNAME }}/spoutbreeze-backend:${{ needs.build-and-push.outputs.image-tag }} \
-              -n spoutbreeze
-        
-        - name: Wait for rollout to complete
-          run: |
-            kubectl rollout status deployment/spoutbreeze-backend -n spoutbreeze --timeout=300s
-        
-        - name: Verify deployment
-          run: |
-            kubectl get pods -n spoutbreeze -l app=spoutbreeze-backend
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+      
+      - name: Configure kubectl
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+      
+      - name: Test cluster connection
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+      
+      - name: Update deployment image
+        run: |
+          kubectl set image deployment/spoutbreeze-backend \
+            fastapi-backend=${{ secrets.DOCKERHUB_USERNAME }}/spoutbreeze-backend:${{ needs.build-and-push.outputs.image-tag }} \
+            -n spoutbreeze
+      
+      - name: Wait for rollout to complete
+        run: |
+          kubectl rollout status deployment/spoutbreeze-backend -n spoutbreeze --timeout=300s
+      
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n spoutbreeze -l app=spoutbreeze-backend
