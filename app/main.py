@@ -135,12 +135,12 @@ async def custom_swagger_ui_html():
 origins = [
     "http://localhost:3000",
     "https://bbb3.riadvice.ovh",
-    "http://localhost:8080",
+    "https://67.222.155.30:8443",
 ]
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=origins,  # In production, replace with specific origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
