@@ -8,9 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.config.database.session import Base
 from app.models.bbb_models import BbbMeeting
 from app.models.channel.channels_model import Channel
-from app.models.stream_models import (
-    StreamSettings,
-)
+from app.models.stream_models import RtmpEndpoint
 from app.models.event.event_models import Event
 
 
@@ -40,8 +38,8 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relationships – note the use of fully qualified names if needed or move to __init__.py import order
-    stream_settings: Mapped[list[StreamSettings]] = relationship(
-        "StreamSettings", back_populates="user", cascade="all, delete-orphan"
+    rtmp_endpoints: Mapped[list[RtmpEndpoint]] = relationship(
+        "RtmpEndpoint", back_populates="user", cascade="all, delete-orphan"
     )
     bbb_meetings: Mapped[list[BbbMeeting]] = relationship(
         "BbbMeeting", back_populates="user", cascade="all, delete-orphan"

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from app.models.user_models import User
 
 
-class StreamSettings(Base):
+class RtmpEndpoint(Base):
     __tablename__ = "stream_endpoints"
 
     id: Mapped[uuid.UUID] = mapped_column(

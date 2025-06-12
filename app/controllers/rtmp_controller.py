@@ -7,28 +7,28 @@ from app.config.database.session import get_db
 from app.controllers.user_controller import get_current_user
 from app.models.user_models import User
 from app.models.stream_schemas import (
-    StreamSettingsResponse,
-    StreamSettingsUpdate,
-    CreateStreamSettingsCreate,
-    StreamSettingsDeleteResponse,
+    RtmpEndpointResponse,
+    RtmpEndpointUpdate,
+    CreateRtmpEndpointCreate,
+    RtmpEndpointDeleteResponse,
 )
-from app.services.stream_service import RtmpEndpointService
+from app.services.rtmp_service import RtmpEndpointService
 
 router = APIRouter(prefix="/api/stream-endpoint", tags=["Stream Endpoints"])
 rtmp_service = RtmpEndpointService()
 
 
-@router.post("/create", response_model=StreamSettingsResponse)
-async def create_stream_settings(
-    stream_settings: CreateStreamSettingsCreate,
+@router.post("/create", response_model=RtmpEndpointResponse)
+async def create_rtmp_endpoints(
+    rtmp_endpoints: CreateRtmpEndpointCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> StreamSettingsResponse:
+) -> RtmpEndpointResponse:
     """
     Create a new stream settings for the current user.
 
     Args:
-        stream_settings: The stream settings to create.
+        rtmp_endpoints: The stream settings to create.
         db: The database session.
         current_user: The current user.
 
@@ -36,21 +36,21 @@ async def create_stream_settings(
         The created stream settings.
     """
     try:
-        new_stream_settings = await rtmp_service.create_stream_settings(
-            stream_settings=stream_settings,
+        new_rtmp_endpoints = await rtmp_service.create_rtmp_endpoints(
+            rtmp_endpoints=rtmp_endpoints,
             user_id=UUID(str(current_user.id)),
             db=db,
         )
-        return new_stream_settings
+        return new_rtmp_endpoints
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/", response_model=List[StreamSettingsResponse])
-async def get_stream_settings(
+@router.get("/", response_model=List[RtmpEndpointResponse])
+async def get_rtmp_endpoints(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[StreamSettingsResponse]:
+) -> List[RtmpEndpointResponse]:
     """
     Get all stream settings for the current user.
 
@@ -62,38 +62,38 @@ async def get_stream_settings(
         A list of stream settings.
     """
     try:
-        stream_settings = await rtmp_service.get_stream_settings_by_user_id(
+        rtmp_endpoints = await rtmp_service.get_rtmp_endpoints_by_user_id(
             user_id=UUID(str(current_user.id)),
             db=db,
         )
-        return stream_settings
+        return rtmp_endpoints
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{stream_settings_id}", response_model=StreamSettingsResponse)
-async def get_stream_settings_by_id(
-    stream_settings_id: UUID,
+@router.get("/{rtmp_endpoints_id}", response_model=RtmpEndpointResponse)
+async def get_rtmp_endpoints_by_id(
+    rtmp_endpoints_id: UUID,
     db: AsyncSession = Depends(get_db),
-) -> StreamSettingsResponse:
+) -> RtmpEndpointResponse:
     """
     Get stream settings by ID.
 
     Args:
-        stream_settings_id: The ID of the stream settings.
+        rtmp_endpoints_id: The ID of the stream settings.
         db: The database session.
 
     Returns:
         The stream settings.
     """
     try:
-        stream_settings = await rtmp_service.get_stream_settings_by_id(
-            stream_settings_id=stream_settings_id,
+        rtmp_endpoints = await rtmp_service.get_rtmp_endpoints_by_id(
+            rtmp_endpoints_id=rtmp_endpoints_id,
             db=db,
         )
-        if not stream_settings:
+        if not rtmp_endpoints:
             raise HTTPException(status_code=404, detail="Stream settings not found")
-        return stream_settings
+        return rtmp_endpoints
     except HTTPException:
         # Re-raise HTTPException without changing it
         raise
@@ -101,32 +101,32 @@ async def get_stream_settings_by_id(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/{stream_settings_id}", response_model=StreamSettingsResponse)
-async def update_stream_settings(
-    stream_settings_id: UUID,
-    stream_settings_update: StreamSettingsUpdate,
+@router.put("/{rtmp_endpoints_id}", response_model=RtmpEndpointResponse)
+async def update_rtmp_endpoints(
+    rtmp_endpoints_id: UUID,
+    rtmp_endpoints_update: RtmpEndpointUpdate,
     db: AsyncSession = Depends(get_db),
-) -> StreamSettingsResponse:
+) -> RtmpEndpointResponse:
     """
     Update stream settings by ID.
 
     Args:
-        stream_settings_id: The ID of the stream settings.
-        stream_settings_update: The updated stream settings.
+        rtmp_endpoints_id: The ID of the stream settings.
+        rtmp_endpoints_update: The updated stream settings.
         db: The database session.
 
     Returns:
         The updated stream settings.
     """
     try:
-        updated_stream_settings = await rtmp_service.update_stream_settings(
-            stream_settings_id=stream_settings_id,
-            stream_settings_update=stream_settings_update,
+        updated_rtmp_endpoints = await rtmp_service.update_rtmp_endpoints(
+            rtmp_endpoints_id=rtmp_endpoints_id,
+            rtmp_endpoints_update=rtmp_endpoints_update,
             db=db,
         )
-        if not updated_stream_settings:
+        if not updated_rtmp_endpoints:
             raise HTTPException(status_code=404, detail="Stream settings not found")
-        return updated_stream_settings
+        return updated_rtmp_endpoints
     except HTTPException:
         # Re-raise HTTPException without changing it
         raise
@@ -134,30 +134,30 @@ async def update_stream_settings(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/{stream_settings_id}", response_model=StreamSettingsDeleteResponse)
-async def delete_stream_settings(
-    stream_settings_id: UUID,
+@router.delete("/{rtmp_endpoints_id}", response_model=RtmpEndpointDeleteResponse)
+async def delete_rtmp_endpoints(
+    rtmp_endpoints_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> StreamSettingsDeleteResponse:
+) -> RtmpEndpointDeleteResponse:
     """
     Delete stream settings by ID.
     Args:
-        stream_settings_id: The ID of the stream settings.
+        rtmp_endpoints_id: The ID of the stream settings.
         db: The database session.
         current_user: The current user.
     Returns:
         The deleted stream settings.
     """
     try:
-        deleted_stream_settings = await rtmp_service.delete_stream_settings(
-            stream_settings_id=stream_settings_id,
+        deleted_rtmp_endpoints = await rtmp_service.delete_rtmp_endpoints(
+            rtmp_endpoints_id=rtmp_endpoints_id,
             user_id=UUID(str(current_user.id)),
             db=db,
         )
-        if not deleted_stream_settings:
+        if not deleted_rtmp_endpoints:
             raise HTTPException(status_code=404, detail="Stream settings not found")
-        return deleted_stream_settings
+        return deleted_rtmp_endpoints
     except HTTPException:
         # Re-raise HTTPException without changing it
         raise

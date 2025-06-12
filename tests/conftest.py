@@ -10,7 +10,7 @@ from app.main import app
 from app.config.database.session import get_db, Base
 from app.models.user_models import User
 from app.models.channel.channels_model import Channel
-from app.models.stream_models import StreamSettings
+from app.models.stream_models import RtmpEndpoint
 
 
 # Test database URL (SQLite for simplicity in tests)
@@ -66,7 +66,7 @@ async def db_session(setup_database):
             # Clean up database after each test
             await session.rollback()
             # Delete all data from tables to ensure clean state
-            await session.execute(StreamSettings.__table__.delete())
+            await session.execute(RtmpEndpoint.__table__.delete())
             await session.execute(Channel.__table__.delete())
             await session.execute(User.__table__.delete())
             await session.commit()
@@ -128,7 +128,7 @@ async def test_channel(db_session: AsyncSession, test_user: User):
 @pytest_asyncio.fixture
 async def test_stream_settings(db_session: AsyncSession, test_user: User):
     """Create test stream settings"""
-    stream_settings = StreamSettings(
+    stream_settings = RtmpEndpoint(
         id=uuid4(),
         title=f"Test Stream {uuid4()}",
         stream_key=f"test-key-{uuid4()}",

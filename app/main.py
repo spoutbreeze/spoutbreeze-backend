@@ -12,7 +12,7 @@ from app.controllers.auth_controller import router as auth_router
 from app.controllers.bbb_controller import router as bbb_router
 from app.controllers.broadcaster_controller import router as broadcaster_router
 from app.controllers.user_controller import router as user_router
-from app.controllers.stream_controller import router as stream_router
+from app.controllers.rtmp_controller import router as stream_router
 from app.controllers.channels_controller import router as channels_router
 from app.controllers.event_controller import router as event_router
 from app.controllers.health_controller import router as health_router

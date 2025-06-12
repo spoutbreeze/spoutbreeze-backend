@@ -5,7 +5,7 @@ from uuid import uuid4
 from app.main import app
 from app.controllers.user_controller import get_current_user
 from app.models.user_models import User
-from app.models.stream_models import StreamSettings
+from app.models.stream_models import RtmpEndpoint
 
 
 class TestStreamController:
@@ -60,7 +60,7 @@ class TestStreamController:
         self,
         client: AsyncClient,
         test_user: User,
-        test_stream_settings: StreamSettings,
+        test_stream_settings: RtmpEndpoint,
         mock_current_user,
     ):
         """Test getting stream settings for current user"""
@@ -96,7 +96,7 @@ class TestStreamController:
         self,
         client: AsyncClient,
         test_user: User,
-        test_stream_settings: StreamSettings,
+        test_stream_settings: RtmpEndpoint,
         mock_current_user,
     ):
         """Test getting stream settings by ID"""
@@ -131,7 +131,7 @@ class TestStreamController:
         self,
         client: AsyncClient,
         test_user: User,
-        test_stream_settings: StreamSettings,
+        test_stream_settings: RtmpEndpoint,
         mock_current_user,
     ):
         """Test successful stream settings update"""
@@ -158,7 +158,7 @@ class TestStreamController:
         self,
         client: AsyncClient,
         test_user: User,
-        test_stream_settings: StreamSettings,
+        test_stream_settings: RtmpEndpoint,
         mock_current_user,
     ):
         """Test partial update of stream settings"""
@@ -202,7 +202,7 @@ class TestStreamController:
         self,
         client: AsyncClient,
         test_user: User,
-        test_stream_settings: StreamSettings,
+        test_stream_settings: RtmpEndpoint,
         mock_current_user,
     ):
         """Test successful stream settings deletion"""
@@ -235,7 +235,7 @@ class TestStreamController:
     async def test_delete_stream_settings_unauthorized_user(
         self,
         client: AsyncClient,
-        test_stream_settings: StreamSettings,
+        test_stream_settings: RtmpEndpoint,
         mock_current_user,
         db_session,
     ):
@@ -314,7 +314,7 @@ class TestStreamController:
         self,
         client: AsyncClient,
         test_user: User,
-        test_stream_settings: StreamSettings,
+        test_stream_settings: RtmpEndpoint,
         mock_current_user,
     ):
         """Test updating stream settings with empty data"""

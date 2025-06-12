@@ -4,7 +4,7 @@ from uuid import UUID
 from datetime import datetime
 
 
-class streamSettingsBase(BaseModel):
+class RtmpEndpointBase(BaseModel):
     """
     Base model for stream settings
     """
@@ -14,7 +14,7 @@ class streamSettingsBase(BaseModel):
     rtmp_url: str
 
 
-class CreateStreamSettingsCreate(streamSettingsBase):
+class CreateRtmpEndpointCreate(RtmpEndpointBase):
     """
     Create model for stream settings
     """
@@ -22,7 +22,7 @@ class CreateStreamSettingsCreate(streamSettingsBase):
     pass
 
 
-class StreamSettingsUpdate(BaseModel):
+class RtmpEndpointUpdate(BaseModel):
     """
     Update model for stream settings
     """
@@ -32,7 +32,7 @@ class StreamSettingsUpdate(BaseModel):
     stream_key: Optional[str] = None
 
 
-class StreamSettingsResponse(streamSettingsBase):
+class RtmpEndpointResponse(RtmpEndpointBase):
     """
     Response model for stream settings
     """
@@ -47,18 +47,18 @@ class StreamSettingsResponse(streamSettingsBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class StreamSettingsListResponse(BaseModel):
+class RtmpEndpointListResponse(BaseModel):
     """
     List response model for stream settings
     """
 
-    stream_settings: List[StreamSettingsResponse]
+    stream_settings: List[RtmpEndpointResponse]
     total: int
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class StreamSettingsDeleteResponse(BaseModel):
+class RtmpEndpointDeleteResponse(BaseModel):
     """
     Delete response model for stream settings
     """

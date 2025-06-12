@@ -2,7 +2,7 @@ from fastapi import APIRouter, Body, Depends, Request, BackgroundTasks, HTTPExce
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config.database.session import get_db
 from app.services.bbb_service import BBBService
-from app.services.stream_service import RtmpEndpointService
+from app.services.rtmp_service import RtmpEndpointService
 from app.models.bbb_schemas import (
     CreateMeetingRequest,
     JoinMeetingRequest,
