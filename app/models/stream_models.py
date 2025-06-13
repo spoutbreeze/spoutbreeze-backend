@@ -35,4 +35,4 @@ class RtmpEndpoint(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="stream_settings")
+    user: Mapped["User"] = relationship("User", back_populates="rtmp_endpoints")

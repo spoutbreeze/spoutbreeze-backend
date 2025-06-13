@@ -121,11 +121,11 @@ async def get_stream_endpoints_proxy(
     Returns all available stream endpoints.
     """
     try:
-        # Get all available stream settings
+        # Get all available stream endpoints
         rtmp_service = RtmpEndpointService()
-        stream_settings = await rtmp_service.get_all_stream_settings(db=db)
+        stream_endpoints = await rtmp_service.get_all_rtmp_endpoints(db=db)
 
-        return stream_settings
+        return stream_endpoints
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
