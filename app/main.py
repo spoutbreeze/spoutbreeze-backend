@@ -134,6 +134,8 @@ async def custom_swagger_ui_html():
 
 origins = [
     "http://localhost:3000",
+    # "spoutbreeze-frontend.spoutbreeze.svc.cluster.local:3000",
+    "https://frontend.67.222.155.30.nip.io:30443",
     "https://bbb3.riadvice.ovh",
     "https://67.222.155.30:8443",
 ]
