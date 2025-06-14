@@ -133,16 +133,18 @@ async def custom_swagger_ui_html():
 
 
 origins = [
-    "http://localhost:3000",
-    "http://spoutbreeze-frontend.spoutbreeze.svc.cluster.local:3000",
-    "https://frontend.67.222.155.30.nip.io:30443",
-    "https://bbb3.riadvice.ovh",
-    "https://67.222.155.30:8443",
+    "http://localhost:3000", # Frontend URL in development
+    "http://spoutbreeze-frontend.spoutbreeze.svc.cluster.local:3000", # Frontend URL in Kubernetes
+    "https://frontend.67.222.155.30.nip.io:30443", # Frontend URL
+    "https://bbb3.riadvice.ovh", # BBB URL
+    "https://67.222.155.30:8443", # Keycloak URL
+    "https://backend.67.222.155.30.nip.io:30444", # Backend URL
+    "https://backend.67.222.155.30.nip.io", # Backend URL without port
 ]
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=origins,  # In production, replace with specific origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
