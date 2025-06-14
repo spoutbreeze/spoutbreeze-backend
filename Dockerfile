@@ -27,4 +27,4 @@ RUN mkdir -p certs && chmod 777 certs
 EXPOSE 8000
 
 # Run the application
-CMD ["fastapi", "dev", "app/main.py"]
+CMD ["fastapi", "run", "app/main.py"]
