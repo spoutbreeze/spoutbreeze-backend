@@ -130,8 +130,10 @@ async def exchange_token(
             value=token_data["access_token"],
             expires=access_token_expires,
             httponly=True,
-            secure=settings.env == "production",  # Only secure in production
-            samesite="lax",
+            # secure=settings.env == "production",  # Only secure in production
+            secure=True, # Always secure for cookies
+            # samesite="lax",
+            samesite="none",
             path="/",
         )
 
@@ -141,8 +143,10 @@ async def exchange_token(
             value=token_data["refresh_token"],
             expires=refresh_token_expires,
             httponly=True,
-            secure=settings.env == "production",  # Only secure in production
-            samesite="lax",
+            # secure=settings.env == "production",  # Only secure in production
+            secure=True,
+            # samesite="lax",
+            samesite="none",
             path="/",
         )
 
