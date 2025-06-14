@@ -136,6 +136,7 @@ origins = [
     "http://localhost:3000", # Frontend URL in development
     "http://spoutbreeze-frontend.spoutbreeze.svc.cluster.local:3000", # Frontend URL in Kubernetes
     "https://frontend.67.222.155.30.nip.io:30443", # Frontend URL
+    "https://frontend.67.222.155.30.nip.io", # Frontend URL without port
     "https://bbb3.riadvice.ovh", # BBB URL
     "https://67.222.155.30:8443", # Keycloak URL
     "https://backend.67.222.155.30.nip.io:30444", # Backend URL
