@@ -132,9 +132,10 @@ async def exchange_token(
             httponly=True,
             # secure=settings.env == "production",  # Only secure in production
             secure=True, # Always secure for cookies
-            samesite="lax",
-            # samesite="none",
+            # samesite="lax",
+            samesite="none",
             path="/",
+            domain=".67.222.155.30.nip.io",
         )
 
         # Set refresh token cookie
@@ -145,9 +146,10 @@ async def exchange_token(
             httponly=True,
             # secure=settings.env == "production",  # Only secure in production
             secure=True,
-            samesite="lax",
-            # samesite="none",
+            # samesite="lax",
+            samesite="none",
             path="/",
+            domain=".67.222.155.30.nip.io",
         )
 
         # Return user info only (no tokens)
@@ -199,8 +201,9 @@ async def refresh_token(request: Request, response: Response):
             httponly=True,
             # secure=settings.env == "production",  # Only secure in production
             secure=True,  # Always secure for cookies
-            samesite="lax",
+            samesite="none",
             path="/",
+            domain=".67.222.155.30.nip.io",
         )
 
         response.set_cookie(
@@ -210,8 +213,9 @@ async def refresh_token(request: Request, response: Response):
             httponly=True,
             # secure=settings.env == "production",  # Only secure in production
             secure=True,  # Always secure for cookies
-            samesite="lax",
+            samesite="none",
             path="/",
+            domain=".67.222.155.30.nip.io",
         )
 
         return {
@@ -282,8 +286,9 @@ async def get_dev_token(
             httponly=True,
             # secure=settings.env == "production",  # Only secure in production
             secure=True,  # Always secure for cookies
-            samesite="lax",
+            samesite="none",
             path="/",
+            domain=".67.222.155.30.nip.io",
         )
 
         # Set refresh token cookie
@@ -294,8 +299,9 @@ async def get_dev_token(
             httponly=True,
             # secure=settings.env == "production",  # Only secure in production
             secure=True,  # Always secure for cookies
-            samesite="lax",
+            samesite="none",
             path="/",
+            domain=".67.222.155.30.nip.io",
         )
 
         return {
