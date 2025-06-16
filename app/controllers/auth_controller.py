@@ -55,11 +55,11 @@ async def protected_route(current_user: User = Depends(get_current_user)):
 def extract_keycloak_roles(user_info: dict, client_id: str):
     """Extract client roles from Keycloak user info"""
     logger.info(f"Extracting roles for client_id: {client_id}")
-    
+
     resource_access = user_info.get("resource_access", {})
     client_access = resource_access.get(client_id, {})
     roles = client_access.get("roles", [])
-    
+
     logger.info(f"Extracted roles: {roles}")
     return roles
 
@@ -100,7 +100,9 @@ async def exchange_token(
                 first_name=str(user_info.get("given_name", "")),
                 last_name=str(user_info.get("family_name", "")),
             )
-            new_user.set_roles_list(user_roles)  # Use helper method to convert list to string
+            new_user.set_roles_list(
+                user_roles
+            )  # Use helper method to convert list to string
             db.add(new_user)
             await db.commit()
             await db.refresh(new_user)
@@ -127,7 +129,9 @@ async def exchange_token(
                 "last_name",
                 str(user_info.get("family_name", existing_user.last_name)),
             )
-            existing_user.set_roles_list(user_roles)  # Use helper method to convert list to string
+            existing_user.set_roles_list(
+                user_roles
+            )  # Use helper method to convert list to string
             setattr(existing_user, "updated_at", datetime.now())
             await db.commit()
             await db.refresh(existing_user)

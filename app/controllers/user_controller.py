@@ -72,7 +72,9 @@ def get_current_user_roles(current_user: User = Depends(get_current_user)) -> Li
     """
     Get roles from the database (stored from Keycloak)
     """
-    user_roles = current_user.get_roles_list()  # Use helper method to convert string to list
+    user_roles = (
+        current_user.get_roles_list()
+    )  # Use helper method to convert string to list
     logger.info(f"User {current_user.username} roles: {user_roles}")
     return user_roles
 

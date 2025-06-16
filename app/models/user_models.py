@@ -79,21 +79,19 @@ class User(Base):
     def has_role(self, role: str) -> bool:
         """Check if user has a specific role"""
         return role in self.get_roles_list()
-    
+
     def has_any_role(self, *roles: str) -> bool:
         """Check if user has any of the specified roles"""
         user_roles = self.get_roles_list()
         return any(role in user_roles for role in roles)
-    
+
     def is_admin(self) -> bool:
         """Check if user has admin role"""
         return self.has_role("admin")
-    
+
     def is_moderator(self) -> bool:
         """Check if user has moderator role"""
         return self.has_role("moderator")
 
     def __repr__(self) -> str:
-        return (
-            f"<User(id={self.id!r}, username={self.username!r}, email={self.email!r}, roles={self.roles!r})>"
-        )
+        return f"<User(id={self.id!r}, username={self.username!r}, email={self.email!r}, roles={self.roles!r})>"
