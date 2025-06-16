@@ -131,7 +131,7 @@ async def exchange_token(
             expires=access_token_expires,
             httponly=True,
             # secure=settings.env == "production",  # Only secure in production
-            secure=True, # Always secure for cookies
+            secure=True,  # Always secure for cookies
             # samesite="lax",
             samesite="none",
             path="/",

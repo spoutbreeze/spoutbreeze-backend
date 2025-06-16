@@ -1,5 +1,6 @@
 import asyncio
 import httpx
+import ssl
 from datetime import datetime, timedelta
 from sqlalchemy import select
 from fastapi import HTTPException
@@ -25,6 +26,36 @@ class TwitchIRCClient:
         self.writer = None
         self.token = None
 
+    def _get_public_ssl_context(self):
+        """Create SSL context for public APIs (like Twitch) with system certificates"""
+        ssl_context = ssl.create_default_context()
+
+        # Try different system certificate locations
+        cert_paths = [
+            "/etc/ssl/certs/ca-certificates.crt",  # Debian/Ubuntu
+            "/etc/pki/tls/certs/ca-bundle.crt",  # CentOS/RHEL
+            "/etc/ssl/cert.pem",  # macOS
+        ]
+
+        for cert_path in cert_paths:
+            try:
+                ssl_context.load_verify_locations(cert_path)
+                return ssl_context
+            except FileNotFoundError:
+                continue
+
+        # Fallback to certifi if available
+        try:
+            import certifi
+
+            ssl_context.load_verify_locations(certifi.where())
+            return ssl_context
+        except ImportError:
+            pass
+
+        # Last resort: use default context (might fail)
+        return ssl.create_default_context()
+
     async def get_active_token(self) -> str:
         """Get the active token from database"""
         try:
@@ -34,7 +65,7 @@ class TwitchIRCClient:
                 stmt = (
                     select(TwitchToken)
                     .where(
-                        TwitchToken.is_active == True,
+                        TwitchToken.is_active,
                         TwitchToken.expires_at > datetime.now(),
                     )
                     .order_by(TwitchToken.created_at.desc())
@@ -73,7 +104,7 @@ class TwitchIRCClient:
             async for db in get_db():
                 stmt = (
                     select(TwitchToken)
-                    .where(TwitchToken.is_active == True)
+                    .where(TwitchToken.is_active)
                     .order_by(TwitchToken.created_at.desc())
                 )
 
@@ -141,7 +172,10 @@ class TwitchIRCClient:
     ) -> Optional[Dict[str, Any]]:
         """Refresh the access token using the refresh token"""
         try:
-            async with httpx.AsyncClient() as client:
+            # Use the same SSL context approach as in the connect method
+            ssl_context = self._get_public_ssl_context()
+
+            async with httpx.AsyncClient(verify=ssl_context) as client:
                 response = await client.post(
                     "https://id.twitch.tv/oauth2/token",
                     data={
@@ -184,11 +218,12 @@ class TwitchIRCClient:
                     await asyncio.sleep(30)
                     continue
 
-                # logger.info(f"[TwitchIRC] Using token: {self.token[:10]}...")
+                # Create SSL context with proper certificate handling
+                ssl_context = self._get_public_ssl_context()
 
-                # Open a secure TLS connection in one call
+                # Open a secure TLS connection with custom SSL context
                 self.reader, self.writer = await asyncio.open_connection(
-                    self.server, self.port, ssl=True
+                    self.server, self.port, ssl=ssl_context
                 )
 
                 # Send PASS, NICK, JOIN
