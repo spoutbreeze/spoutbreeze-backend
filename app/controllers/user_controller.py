@@ -70,27 +70,22 @@ async def get_current_user(
 
 def get_current_user_roles(current_user: User = Depends(get_current_user)) -> List[str]:
     """
-    Extract client roles from the current user's token payload
+    Get roles from the database (stored from Keycloak)
     """
-    # Get the token payload that was stored in get_current_user
-    payload = getattr(current_user, "_token_payload", {})
-
-    # Extract roles from resource_access for client roles
-    resource_access = payload.get("resource_access", {})
-    client_access = resource_access.get(settings.keycloak_client_id, {})
-    roles = client_access.get("roles", [])
-
-    logger.info(f"User {current_user.username} roles: {roles}")
-    return roles
+    user_roles = (
+        current_user.get_roles_list()
+    )  # Use helper method to convert string to list
+    logger.info(f"User {current_user.username} roles: {user_roles}")
+    return user_roles
 
 
 def require_role(required_role: str):
     """
-    Create a dependency that checks for a specific client role
+    Create a dependency that checks for a specific role using database roles
     """
 
-    def role_checker(roles: List[str] = Depends(get_current_user_roles)):
-        if required_role not in roles:
+    def role_checker(current_user: User = Depends(get_current_user)):
+        if not current_user.has_role(required_role):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Role '{required_role}' required to access this resource",
@@ -102,11 +97,11 @@ def require_role(required_role: str):
 
 def require_any_role(*required_roles: str):
     """
-    Create a dependency that checks for any of the specified client roles
+    Create a dependency that checks for any of the specified roles using database roles
     """
 
-    def role_checker(roles: List[str] = Depends(get_current_user_roles)):
-        if not any(role in roles for role in required_roles):
+    def role_checker(current_user: User = Depends(get_current_user)):
+        if not current_user.has_any_role(*required_roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"One of these roles required: {', '.join(required_roles)}",

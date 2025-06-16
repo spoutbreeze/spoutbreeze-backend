@@ -3,7 +3,8 @@ from fastapi import HTTPException, status
 from jose import jwt
 from app.config.settings import keycloak_openid, get_settings
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
+import os
 
 from app.config.logger_config import logger
 
@@ -28,6 +29,21 @@ class AuthService:
             self.public_key = raw_key
 
         self._admin_token_cache: Optional[dict] = None
+
+        # SSL verification for requests
+        self.ssl_verify = self._get_ssl_verify()
+
+    def _get_ssl_verify(self) -> Union[str, bool]:
+        """
+        Determine SSL verification method based on certificate availability
+        """
+        cert_path = "/app/certs/keycloak.pem"
+        if os.path.exists(cert_path):
+            logger.info(f"Using SSL certificate: {cert_path}")
+            return cert_path
+        else:
+            logger.warning("SSL certificate not found, disabling SSL verification")
+            return False
 
     def validate_token(self, token: str) -> Dict[str, Any]:
         """
@@ -190,7 +206,9 @@ class AuthService:
 
             headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
-            response = requests.post(admin_token_url, data=data, headers=headers)
+            response = requests.post(
+                admin_token_url, data=data, headers=headers, verify=self.ssl_verify
+            )
             response.raise_for_status()
 
             token_data = response.json()
@@ -244,7 +262,11 @@ class AuthService:
             }
 
             response = requests.put(
-                update_url, json=keycloak_user_data, headers=headers, timeout=10
+                update_url,
+                json=keycloak_user_data,
+                headers=headers,
+                timeout=10,
+                verify=self.ssl_verify,
             )
             response.raise_for_status()
 

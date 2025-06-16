@@ -13,11 +13,13 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     keycloak_id: str
+    roles: str
 
 
 class UserResponse(UserBase):
     id: UUID
     keycloak_id: str
+    roles: str
     created_at: Optional[datetime] = None
     is_active: bool
 
