@@ -30,11 +30,7 @@ async def twitch_callback(
         )
 
         # Deactivate old tokens using SQLAlchemy ORM
-        stmt = (
-            update(TwitchToken)
-            .where(TwitchToken.is_active == True)
-            .values(is_active=False)
-        )
+        stmt = update(TwitchToken).where(TwitchToken.is_active).values(is_active=False)
         await db.execute(stmt)
 
         # Store new token

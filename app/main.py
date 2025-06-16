@@ -63,11 +63,11 @@ async def lifespan(app: FastAPI):
     app.openapi_schema = openapi_schema
 
     # Startup: schedule the IRC client
-    # twitch_tasks = asyncio.gather(
-    #     twitch_client.connect(),
-    #     twitch_client.start_token_refresh_scheduler(),
-    #     return_exceptions=True,
-    # )
+    twitch_tasks = asyncio.gather(
+        twitch_client.connect(),
+        twitch_client.start_token_refresh_scheduler(),
+        return_exceptions=True,
+    )
 
     logger.info("[TwitchIRC] Background connect and token refresh tasks scheduled")
 
@@ -87,11 +87,11 @@ async def lifespan(app: FastAPI):
     yield  # App is running
 
     # Shutdown: cancel the IRC task
-    # twitch_tasks.cancel()
-    # try:
-    #     await twitch_tasks
-    # except asyncio.CancelledError:
-    #     logger.info("[TwitchIRC] Connect task cancelled cleanly")
+    twitch_tasks.cancel()
+    try:
+        await twitch_tasks
+    except asyncio.CancelledError:
+        logger.info("[TwitchIRC] Connect task cancelled cleanly")
 
 
 app = FastAPI(
@@ -133,22 +133,50 @@ async def custom_swagger_ui_html():
 
 
 origins = [
-    "http://localhost:3000", # Frontend URL in development
-    "http://spoutbreeze-frontend.spoutbreeze.svc.cluster.local:3000", # Frontend URL in Kubernetes
-    "https://frontend.67.222.155.30.nip.io:30443", # Frontend URL
-    "https://frontend.67.222.155.30.nip.io", # Frontend URL without port
-    "https://bbb3.riadvice.ovh", # BBB URL
-    "https://67.222.155.30:8443", # Keycloak URL
-    "https://backend.67.222.155.30.nip.io:30444", # Backend URL
-    "https://backend.67.222.155.30.nip.io", # Backend URL without port
+    "http://localhost:3000",  # Frontend URL in development
+    "http://spoutbreeze-frontend.spoutbreeze.svc.cluster.local:3000",  # Frontend URL in Kubernetes
+    "https://frontend.67.222.155.30.nip.io:30443",  # Frontend URL
+    "https://frontend.67.222.155.30.nip.io",  # Frontend URL without port
+    "https://bbb3.riadvice.ovh",  # BBB URL
+    "https://67.222.155.30:8443",  # Keycloak URL
+    "https://backend.67.222.155.30.nip.io:30444",  # Backend URL
+    "https://backend.67.222.155.30.nip.io",  # Backend URL without port
 ]
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "Accept",
+        "Origin",
+        "Access-Control-Request-Method",
+        "Access-Control-Request-Headers",
+        # WebSocket specific headers
+        "Upgrade",
+        "Connection",
+        "Sec-WebSocket-Key",
+        "Sec-WebSocket-Protocol",
+        "Sec-WebSocket-Version",
+        # Any custom headers your app uses
+        "Accept-Language",
+        "Cache-Control",
+        "Content-Language",
+        "DNT",
+        "If-Modified-Since",
+        "Keep-Alive",
+        "Pragma",
+        "Referer",
+        "User-Agent",
+        "X-CSRFToken",
+        "X-Forwarded-For",
+        "X-Forwarded-Proto",
+        "ngrok-skip-browser-warning",
+    ],
 )
 
 
