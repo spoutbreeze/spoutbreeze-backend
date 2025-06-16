@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 from app.models.user_models import User
 from app.controllers.user_controller import get_current_user
-from typing import cast
+from typing import cast, Dict, Any
 from datetime import timedelta
 
 from app.config.logger_config import logger
@@ -41,15 +41,72 @@ class ProtectedRouteResponse(BaseModel):
     message: str
 
 
-@router.get("/protected", response_model=ProtectedRouteResponse)
-async def protected_route(current_user: User = Depends(get_current_user)):
+def set_auth_cookies(response: Response, token_data: Dict[str, Any]) -> None:
     """
-    Protected route that requires authentication
+    Set authentication cookies with proper configuration
 
-    Returns:
-        A welcome message with the username
+    Args:
+        response: FastAPI Response object
+        token_data: Dictionary containing access_token, refresh_token, expires_in
     """
-    return {"message": f"Hello, {current_user.username}! This is a protected route."}
+    # Calculate expiration times
+    access_token_expires = datetime.now(timezone.utc) + timedelta(
+        seconds=token_data.get("expires_in", 300)
+    )
+    refresh_token_expires = datetime.now(timezone.utc) + timedelta(days=30)
+
+    # Common cookie settings
+    cookie_config = {
+        "httponly": True,
+        "secure": True,
+        "samesite": "none",
+        "path": "/",
+        "domain": ".67.222.155.30.nip.io",
+    }
+
+    # Set access token cookie
+    response.set_cookie(
+        key="access_token",
+        value=token_data["access_token"],
+        expires=access_token_expires,
+        **cookie_config,
+    )
+
+    # Set refresh token cookie
+    response.set_cookie(
+        key="refresh_token",
+        value=token_data["refresh_token"],
+        expires=refresh_token_expires,
+        **cookie_config,
+    )
+
+
+def clear_auth_cookies(response: Response) -> None:
+    """
+    Clear authentication cookies
+
+    Args:
+        response: FastAPI Response object
+    """
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path="/")
+
+    # Clear Keycloak cookies as well
+    keycloak_cookies = [
+        "AUTH_SESSION_ID",
+        "KC_AUTH_SESSION_HASH",
+        "KEYCLOAK_IDENTITY",
+        "KEYCLOAK_SESSION",
+    ]
+
+    for cookie_name in keycloak_cookies:
+        response.delete_cookie(cookie_name, path=f"/realms/{settings.keycloak_realm}/")
+        # Also try to clear for the Keycloak domain if different
+        response.delete_cookie(
+            cookie_name,
+            path=f"/realms/{settings.keycloak_realm}/",
+            domain=".localhost",
+        )
 
 
 def extract_keycloak_roles(user_info: dict, client_id: str):
@@ -61,7 +118,90 @@ def extract_keycloak_roles(user_info: dict, client_id: str):
     roles = client_access.get("roles", [])
 
     logger.info(f"Extracted roles: {roles}")
+
+    # If no roles from Keycloak, return None to keep database default
+    if not roles:
+        logger.info("No roles found in Keycloak, will use database default")
+        return None
+
     return roles
+
+
+async def process_user_info(
+    user_info: dict, user_roles: list, db: AsyncSession
+) -> User:
+    """
+    Process user information and create/update user in database
+
+    Args:
+        user_info: User information from Keycloak
+        user_roles: List of roles from Keycloak
+        db: Database session
+
+    Returns:
+        User object
+    """
+    keycloak_id = user_info.get("sub")
+
+    stmt = select(User).where(User.keycloak_id == keycloak_id)
+    result = await db.execute(stmt)
+    existing_user = result.scalars().first()
+
+    if not existing_user:
+        # Create a new user in the database
+        new_user = User(
+            keycloak_id=str(keycloak_id),
+            username=str(user_info.get("preferred_username", "")),
+            email=str(user_info.get("email", "")),
+            first_name=str(user_info.get("given_name", "")),
+            last_name=str(user_info.get("family_name", "")),
+        )
+        # Only set roles if we got some from Keycloak, otherwise keep default
+        if user_roles is not None:
+            new_user.set_roles_list(user_roles)
+
+        db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
+        logger.info(
+            f"New user created: {new_user.username}, with keycloak ID: {new_user.keycloak_id}, roles: {new_user.roles}"
+        )
+        return new_user
+    else:
+        # Update the existing user information
+        existing_user.username = str(
+            user_info.get("preferred_username", existing_user.username)
+        )
+        existing_user.email = str(user_info.get("email", existing_user.email))
+        existing_user.first_name = str(
+            user_info.get("given_name", existing_user.first_name)
+        )
+        existing_user.last_name = str(
+            user_info.get("family_name", existing_user.last_name)
+        )
+        existing_user.updated_at = datetime.now()
+
+        # Only update roles if we got some from Keycloak
+        if user_roles is not None:
+            existing_user.set_roles_list(user_roles)
+
+        await db.commit()
+        await db.refresh(existing_user)
+        logger.info(
+            f"User updated: {existing_user.username}, with keycloak ID: {existing_user.keycloak_id}, roles: {existing_user.roles}"
+        )
+        return existing_user
+
+
+@router.get("/protected", response_model=ProtectedRouteResponse)
+async def protected_route(current_user: User = Depends(get_current_user)):
+    """
+    Protected route that requires authentication
+
+    Returns:
+        A welcome message with the username
+    """
+    return {"message": f"Hello, {current_user.username}! This is a protected route."}
 
 
 @router.post("/token")
@@ -84,92 +224,11 @@ async def exchange_token(
         # Extract roles from user_info
         user_roles = extract_keycloak_roles(user_info, settings.keycloak_client_id)
 
-        # Check if the user already exists
-        keycloak_id = user_info.get("sub")
+        # Process user information
+        await process_user_info(user_info, user_roles, db)
 
-        stmt = select(User).where(User.keycloak_id == keycloak_id)
-        result = await db.execute(stmt)
-        existing_user = result.scalars().first()
-
-        if not existing_user:
-            # Create a new user in the database
-            new_user = User(
-                keycloak_id=str(keycloak_id),
-                username=str(user_info.get("preferred_username", "")),
-                email=str(user_info.get("email", "")),
-                first_name=str(user_info.get("given_name", "")),
-                last_name=str(user_info.get("family_name", "")),
-            )
-            new_user.set_roles_list(user_roles)
-            db.add(new_user)
-            await db.commit()
-            await db.refresh(new_user)
-            logger.info(
-                f"New user created: {new_user.username}, with keycloak ID: {new_user.keycloak_id}, roles: {new_user.roles}"
-            )
-        else:
-            # Update the existing user information
-            setattr(
-                existing_user,
-                "username",
-                str(user_info.get("preferred_username", existing_user.username)),
-            )
-            setattr(
-                existing_user, "email", str(user_info.get("email", existing_user.email))
-            )
-            setattr(
-                existing_user,
-                "first_name",
-                str(user_info.get("given_name", existing_user.first_name)),
-            )
-            setattr(
-                existing_user,
-                "last_name",
-                str(user_info.get("family_name", existing_user.last_name)),
-            )
-            existing_user.set_roles_list(
-                user_roles
-            )  # Use helper method to convert list to string
-            setattr(existing_user, "updated_at", datetime.now())
-            await db.commit()
-            await db.refresh(existing_user)
-            logger.info(
-                f"User updated: {existing_user.username}, with keycloak ID: {existing_user.keycloak_id}, roles: {existing_user.roles}"
-            )
-
-        # Set HTTP-only cookies with proper UTC datetime
-        access_token_expires = datetime.now(timezone.utc) + timedelta(
-            seconds=token_data.get("expires_in", 300)
-        )
-        refresh_token_expires = datetime.now(timezone.utc) + timedelta(days=30)
-
-        # Set access token cookie
-        response.set_cookie(
-            key="access_token",
-            value=token_data["access_token"],
-            expires=access_token_expires,
-            httponly=True,
-            # secure=settings.env == "production",  # Only secure in production
-            secure=True,  # Always secure for cookies
-            # samesite="lax",
-            samesite="none",
-            path="/",
-            domain=".67.222.155.30.nip.io",
-        )
-
-        # Set refresh token cookie
-        response.set_cookie(
-            key="refresh_token",
-            value=token_data["refresh_token"],
-            expires=refresh_token_expires,
-            httponly=True,
-            # secure=settings.env == "production",  # Only secure in production
-            secure=True,
-            # samesite="lax",
-            samesite="none",
-            path="/",
-            domain=".67.222.155.30.nip.io",
-        )
+        # Set authentication cookies
+        set_auth_cookies(response, token_data)
 
         # Return user info only (no tokens)
         return {
@@ -207,35 +266,8 @@ async def refresh_token(request: Request, response: Response):
 
         token_data = auth_service.refresh_token(refresh_token)
 
-        # Set new cookies with proper UTC datetime
-        access_token_expires = datetime.now(timezone.utc) + timedelta(
-            seconds=token_data.get("expires_in", 300)
-        )
-        refresh_token_expires = datetime.now(timezone.utc) + timedelta(days=30)
-
-        response.set_cookie(
-            key="access_token",
-            value=token_data["access_token"],
-            expires=access_token_expires,
-            httponly=True,
-            # secure=settings.env == "production",  # Only secure in production
-            secure=True,  # Always secure for cookies
-            samesite="none",
-            path="/",
-            domain=".67.222.155.30.nip.io",
-        )
-
-        response.set_cookie(
-            key="refresh_token",
-            value=token_data["refresh_token"],
-            expires=refresh_token_expires,
-            httponly=True,
-            # secure=settings.env == "production",  # Only secure in production
-            secure=True,  # Always secure for cookies
-            samesite="none",
-            path="/",
-            domain=".67.222.155.30.nip.io",
-        )
+        # Set new authentication cookies
+        set_auth_cookies(response, token_data)
 
         return {
             "user_info": token_data["user_info"],
@@ -244,8 +276,7 @@ async def refresh_token(request: Request, response: Response):
         }
     except Exception as e:
         # Clear cookies on error
-        response.delete_cookie("access_token", path="/")
-        response.delete_cookie("refresh_token", path="/")
+        clear_auth_cookies(response)
         logger.error(f"Refresh token error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -253,7 +284,6 @@ async def refresh_token(request: Request, response: Response):
         )
 
 
-# FOR DEVELOPMENT ONLY
 @router.post("/dev-token", response_model=TokenResponse)
 async def get_dev_token(
     username: str,
@@ -283,62 +313,11 @@ async def get_dev_token(
         # Extract roles
         user_roles = extract_keycloak_roles(user_info, settings.keycloak_client_id)
 
-        # Check if user exists
-        keycloak_id = user_info.get("sub")
-        stmt = select(User).where(User.keycloak_id == keycloak_id)
-        result = await db.execute(stmt)
-        existing_user = result.scalars().first()
+        # Process user information
+        await process_user_info(user_info, user_roles, db)
 
-        # Create user if doesn't exist
-        if not existing_user:
-            new_user = User(
-                keycloak_id=str(keycloak_id),
-                username=str(user_info.get("preferred_username", "")),
-                email=str(user_info.get("email", "")),
-                first_name=str(user_info.get("given_name", "")),
-                last_name=str(user_info.get("family_name", "")),
-            )
-            new_user.set_roles_list(user_roles)  # Use helper method
-            db.add(new_user)
-            await db.commit()
-            await db.refresh(new_user)
-        else:
-            # Update roles if user exists
-            existing_user.set_roles_list(user_roles)  # Use helper method
-            await db.commit()
-            await db.refresh(existing_user)
-
-        # Set HTTP-only cookies with proper UTC datetime
-        access_token_expires = datetime.now(timezone.utc) + timedelta(
-            seconds=token_response.get("expires_in", 300)
-        )
-        refresh_token_expires = datetime.now(timezone.utc) + timedelta(days=30)
-
-        # Set access token cookie
-        response.set_cookie(
-            key="access_token",
-            value=token_response["access_token"],
-            expires=access_token_expires,
-            httponly=True,
-            # secure=settings.env == "production",  # Only secure in production
-            secure=False,  # Always secure for cookies
-            samesite="lax",
-            path="/",
-            # domain=".67.222.155.30.nip.io",
-        )
-
-        # Set refresh token cookie
-        response.set_cookie(
-            key="refresh_token",
-            value=token_response["refresh_token"],
-            expires=refresh_token_expires,
-            httponly=True,
-            # secure=settings.env == "production",  # Only secure in production
-            secure=False,  # Always secure for cookies
-            samesite="lax",
-            path="/",
-            # domain=".67.222.155.30.nip.io",
-        )
+        # Set authentication cookies
+        set_auth_cookies(response, token_response)
 
         return {
             "access_token": token_response["access_token"],
@@ -378,28 +357,8 @@ async def logout(
         if refresh_token:
             auth_service.logout(refresh_token)
 
-        # Clear cookies
-        response.delete_cookie("access_token", path="/")
-        response.delete_cookie("refresh_token", path="/")
-
-        # Clear Keycloak cookies as well
-        keycloak_cookies = [
-            "AUTH_SESSION_ID",
-            "KC_AUTH_SESSION_HASH",
-            "KEYCLOAK_IDENTITY",
-            "KEYCLOAK_SESSION",
-        ]
-
-        for cookie_name in keycloak_cookies:
-            response.delete_cookie(
-                cookie_name, path=f"/realms/${settings.keycloak_realm}/"
-            )
-            # Also try to clear for the Keycloak domain if different
-            response.delete_cookie(
-                cookie_name,
-                path=f"/realms/${settings.keycloak_realm}/",
-                domain=".localhost",
-            )
+        # Clear authentication cookies
+        clear_auth_cookies(response)
 
         return {
             "message": "Successfully logged out",
@@ -408,8 +367,7 @@ async def logout(
     except Exception as e:
         logger.error(f"Logout error: {str(e)}")
         # Still clear cookies even if logout fails
-        response.delete_cookie("access_token", path="/")
-        response.delete_cookie("refresh_token", path="/")
+        clear_auth_cookies(response)
         return {
             "message": "Successfully logged out",
             "statusCode": status.HTTP_200_OK,
