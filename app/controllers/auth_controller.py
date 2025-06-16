@@ -87,10 +87,11 @@ def clear_auth_cookies(response: Response) -> None:
     Args:
         response: FastAPI Response object
     """
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/")
+    # Clear your application cookies
+    response.delete_cookie("access_token", path="/", domain=".67.222.155.30.nip.io")
+    response.delete_cookie("refresh_token", path="/", domain=".67.222.155.30.nip.io")
 
-    # Clear Keycloak cookies as well
+    # Clear Keycloak cookies - these need to match your Keycloak domain
     keycloak_cookies = [
         "AUTH_SESSION_ID",
         "KC_AUTH_SESSION_HASH",
@@ -98,14 +99,21 @@ def clear_auth_cookies(response: Response) -> None:
         "KEYCLOAK_SESSION",
     ]
 
+    # Get the Keycloak domain from your server URL
+    keycloak_domain = ".67.222.155.30.nip.io"  # Same as your main domain
+
     for cookie_name in keycloak_cookies:
-        response.delete_cookie(cookie_name, path=f"/realms/{settings.keycloak_realm}/")
-        # Also try to clear for the Keycloak domain if different
+        # Clear for main domain
+        response.delete_cookie(cookie_name, path="/", domain=keycloak_domain)
+        # Clear for realm-specific path
         response.delete_cookie(
             cookie_name,
             path=f"/realms/{settings.keycloak_realm}/",
-            domain=".localhost",
+            domain=keycloak_domain,
         )
+        # Clear without domain (for exact domain matches)
+        response.delete_cookie(cookie_name, path="/")
+        response.delete_cookie(cookie_name, path=f"/realms/{settings.keycloak_realm}/")
 
 
 def extract_keycloak_roles(user_info: dict, client_id: str) -> Optional[list]:
