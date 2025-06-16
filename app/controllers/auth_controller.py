@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 from app.models.user_models import User
 from app.controllers.user_controller import get_current_user
-from typing import cast, Dict, Any
+from typing import cast, Dict, Any, Optional
 from datetime import timedelta
 
 from app.config.logger_config import logger
@@ -55,21 +55,16 @@ def set_auth_cookies(response: Response, token_data: Dict[str, Any]) -> None:
     )
     refresh_token_expires = datetime.now(timezone.utc) + timedelta(days=30)
 
-    # Common cookie settings
-    cookie_config = {
-        "httponly": True,
-        "secure": True,
-        "samesite": "none",
-        "path": "/",
-        "domain": ".67.222.155.30.nip.io",
-    }
-
     # Set access token cookie
     response.set_cookie(
         key="access_token",
         value=token_data["access_token"],
         expires=access_token_expires,
-        **cookie_config,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/",
+        domain=".67.222.155.30.nip.io",
     )
 
     # Set refresh token cookie
@@ -77,7 +72,11 @@ def set_auth_cookies(response: Response, token_data: Dict[str, Any]) -> None:
         key="refresh_token",
         value=token_data["refresh_token"],
         expires=refresh_token_expires,
-        **cookie_config,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/",
+        domain=".67.222.155.30.nip.io",
     )
 
 
@@ -109,7 +108,7 @@ def clear_auth_cookies(response: Response) -> None:
         )
 
 
-def extract_keycloak_roles(user_info: dict, client_id: str):
+def extract_keycloak_roles(user_info: dict, client_id: str) -> Optional[list]:
     """Extract client roles from Keycloak user info"""
     logger.info(f"Extracting roles for client_id: {client_id}")
 
@@ -128,7 +127,7 @@ def extract_keycloak_roles(user_info: dict, client_id: str):
 
 
 async def process_user_info(
-    user_info: dict, user_roles: list, db: AsyncSession
+    user_info: dict, user_roles: Optional[list], db: AsyncSession
 ) -> User:
     """
     Process user information and create/update user in database
