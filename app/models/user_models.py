@@ -10,6 +10,7 @@ from app.models.bbb_models import BbbMeeting
 from app.models.channel.channels_model import Channel
 from app.models.stream_models import RtmpEndpoint
 from app.models.event.event_models import Event
+from typing import List
 
 
 class User(Base):
@@ -29,6 +30,9 @@ class User(Base):
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     first_name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
+    roles: Mapped[str] = mapped_column(
+        String, default="moderator", nullable=False
+    )  # Store Keycloak client roles as comma-separated string
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now(), nullable=False
     )
@@ -62,7 +66,34 @@ class User(Base):
         passive_deletes=True,
     )
 
+    def get_roles_list(self) -> List[str]:
+        """Get roles as a list from comma-separated string"""
+        if not self.roles:
+            return []
+        return [role.strip() for role in self.roles.split(",") if role.strip()]
+
+    def set_roles_list(self, roles: List[str]) -> None:
+        """Set roles from a list to comma-separated string"""
+        self.roles = ",".join(roles) if roles else ""
+
+    def has_role(self, role: str) -> bool:
+        """Check if user has a specific role"""
+        return role in self.get_roles_list()
+    
+    def has_any_role(self, *roles: str) -> bool:
+        """Check if user has any of the specified roles"""
+        user_roles = self.get_roles_list()
+        return any(role in user_roles for role in roles)
+    
+    def is_admin(self) -> bool:
+        """Check if user has admin role"""
+        return self.has_role("admin")
+    
+    def is_moderator(self) -> bool:
+        """Check if user has moderator role"""
+        return self.has_role("moderator")
+
     def __repr__(self) -> str:
         return (
-            f"<User(id={self.id!r}, username={self.username!r}, email={self.email!r})>"
+            f"<User(id={self.id!r}, username={self.username!r}, email={self.email!r}, roles={self.roles!r})>"
         )

@@ -52,6 +52,18 @@ async def protected_route(current_user: User = Depends(get_current_user)):
     return {"message": f"Hello, {current_user.username}! This is a protected route."}
 
 
+def extract_keycloak_roles(user_info: dict, client_id: str):
+    """Extract client roles from Keycloak user info"""
+    logger.info(f"Extracting roles for client_id: {client_id}")
+    
+    resource_access = user_info.get("resource_access", {})
+    client_access = resource_access.get(client_id, {})
+    roles = client_access.get("roles", [])
+    
+    logger.info(f"Extracted roles: {roles}")
+    return roles
+
+
 @router.post("/token")
 async def exchange_token(
     request: TokenRequest, response: Response, db: AsyncSession = Depends(get_db)
@@ -69,6 +81,9 @@ async def exchange_token(
         user_info = auth_service.get_user_info(cast(str, access_token))
         print("User info:", user_info)
 
+        # Extract roles from user_info
+        user_roles = extract_keycloak_roles(user_info, settings.keycloak_client_id)
+
         # Check if the user already exists
         keycloak_id = user_info.get("sub")
 
@@ -85,11 +100,12 @@ async def exchange_token(
                 first_name=str(user_info.get("given_name", "")),
                 last_name=str(user_info.get("family_name", "")),
             )
+            new_user.set_roles_list(user_roles)  # Use helper method to convert list to string
             db.add(new_user)
             await db.commit()
             await db.refresh(new_user)
             logger.info(
-                f"New user created: {new_user.username}, with keycloak ID: {new_user.keycloak_id}"
+                f"New user created: {new_user.username}, with keycloak ID: {new_user.keycloak_id}, roles: {new_user.roles}"
             )
         else:
             # Update the existing user information
@@ -111,11 +127,12 @@ async def exchange_token(
                 "last_name",
                 str(user_info.get("family_name", existing_user.last_name)),
             )
+            existing_user.set_roles_list(user_roles)  # Use helper method to convert list to string
             setattr(existing_user, "updated_at", datetime.now())
             await db.commit()
             await db.refresh(existing_user)
             logger.info(
-                f"User updated: {existing_user.username}, with keycloak ID: {existing_user.keycloak_id}"
+                f"User updated: {existing_user.username}, with keycloak ID: {existing_user.keycloak_id}, roles: {existing_user.roles}"
             )
 
         # Set HTTP-only cookies with proper UTC datetime
@@ -261,16 +278,33 @@ async def get_dev_token(
         access_token = token_response.get("access_token")
         user_info = auth_service.get_user_info(cast(str, access_token))
 
+        # Extract roles
+        user_roles = extract_keycloak_roles(user_info, settings.keycloak_client_id)
+
         # Check if user exists
         keycloak_id = user_info.get("sub")
         stmt = select(User).where(User.keycloak_id == keycloak_id)
         result = await db.execute(stmt)
         existing_user = result.scalars().first()
 
-        # Create user if doesn't exist (similar to exchange_token)
+        # Create user if doesn't exist
         if not existing_user:
-            # Create new user logic here
-            pass
+            new_user = User(
+                keycloak_id=str(keycloak_id),
+                username=str(user_info.get("preferred_username", "")),
+                email=str(user_info.get("email", "")),
+                first_name=str(user_info.get("given_name", "")),
+                last_name=str(user_info.get("family_name", "")),
+            )
+            new_user.set_roles_list(user_roles)  # Use helper method
+            db.add(new_user)
+            await db.commit()
+            await db.refresh(new_user)
+        else:
+            # Update roles if user exists
+            existing_user.set_roles_list(user_roles)  # Use helper method
+            await db.commit()
+            await db.refresh(existing_user)
 
         # Set HTTP-only cookies with proper UTC datetime
         access_token_expires = datetime.now(timezone.utc) + timedelta(
