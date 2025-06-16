@@ -100,9 +100,7 @@ async def exchange_token(
                 first_name=str(user_info.get("given_name", "")),
                 last_name=str(user_info.get("family_name", "")),
             )
-            new_user.set_roles_list(
-                user_roles
-            )  # Use helper method to convert list to string
+            new_user.set_roles_list(user_roles)
             db.add(new_user)
             await db.commit()
             await db.refresh(new_user)
@@ -323,10 +321,10 @@ async def get_dev_token(
             expires=access_token_expires,
             httponly=True,
             # secure=settings.env == "production",  # Only secure in production
-            secure=True,  # Always secure for cookies
-            samesite="none",
+            secure=False,  # Always secure for cookies
+            samesite="lax",
             path="/",
-            domain=".67.222.155.30.nip.io",
+            # domain=".67.222.155.30.nip.io",
         )
 
         # Set refresh token cookie
@@ -336,10 +334,10 @@ async def get_dev_token(
             expires=refresh_token_expires,
             httponly=True,
             # secure=settings.env == "production",  # Only secure in production
-            secure=True,  # Always secure for cookies
-            samesite="none",
+            secure=False,  # Always secure for cookies
+            samesite="lax",
             path="/",
-            domain=".67.222.155.30.nip.io",
+            # domain=".67.222.155.30.nip.io",
         )
 
         return {

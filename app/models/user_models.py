@@ -30,9 +30,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     first_name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
-    roles: Mapped[str] = mapped_column(
-        String, default="moderator", nullable=False
-    )  # Store Keycloak client roles as comma-separated string
+    roles: Mapped[str] = mapped_column(String, default="moderator", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now(), nullable=False
     )
@@ -74,7 +72,9 @@ class User(Base):
 
     def set_roles_list(self, roles: List[str]) -> None:
         """Set roles from a list to comma-separated string"""
-        self.roles = ",".join(roles) if roles else ""
+        if roles:  # Only update if roles is not empty
+            self.roles = ",".join(roles)
+        # If roles is empty, preserves default
 
     def has_role(self, role: str) -> bool:
         """Check if user has a specific role"""
