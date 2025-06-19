@@ -6,7 +6,7 @@ from sqlalchemy import select
 from app.services.auth_service import AuthService
 from app.config.database.session import get_db
 from app.models.user_models import User
-from app.models.user_schemas import UserResponse, UpdateProfileRequest
+from app.models.user_schemas import UserResponse, UpdateProfileRequest, UpdateUserRoleRequest
 from app.config.logger_config import logger
 from app.config.settings import get_settings
 import uuid
@@ -250,3 +250,109 @@ async def get_user_by_id(
         )
 
     return user
+
+
+@router.put("/users/{user_id}/role", response_model=UserResponse)
+async def update_user_role(
+    role_data: UpdateUserRoleRequest,
+    user_id: UUID = Path(..., title="The ID of the user to update"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: bool = Depends(require_role("admin")),
+):
+    """
+    Update a user's role (Admin only)
+
+    Args:
+        user_id: The ID of the user to update
+        role_data: The new role data
+        db: The database session
+        current_user: The current user information
+
+    Returns:
+        The updated user information
+    """
+    request_id = str(uuid.uuid4())
+    logger.info(
+        f"[{request_id}] Admin {current_user.username} updating role for user {user_id} to {role_data.role}"
+    )
+
+    try:
+        # Get the target user
+        stmt = select(User).where(User.id == user_id)
+        result = await db.execute(stmt)
+        target_user = result.scalars().first()
+
+        if not target_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User with ID {user_id} not found",
+            )
+
+        # Validate role format
+        new_role = role_data.role.strip().lower()
+        if not new_role:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Role cannot be empty",
+            )
+
+        # Add validation for allowed roles (optional but recommended)
+        allowed_roles = ["admin", "moderator"]
+        if new_role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Role '{new_role}' is not allowed. Allowed roles: {', '.join(allowed_roles)}",
+            )
+
+        # Prevent admin from changing their own role (optional security measure)
+        if target_user.id == current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot modify your own role",
+            )
+
+        logger.info(
+            f"[{request_id}] Updating role in Keycloak for user: {target_user.keycloak_id}"
+        )
+
+        # Update role in Keycloak first - this will now throw more specific errors
+        try:
+            auth_service.update_user_role(
+                user_id=target_user.keycloak_id, 
+                new_role=new_role
+            )
+        except HTTPException as e:
+            # Re-raise HTTP exceptions from auth_service with better context
+            logger.error(f"[{request_id}] Keycloak role update failed: {e.detail}")
+            raise HTTPException(
+                status_code=e.status_code,
+                detail=f"Failed to update role in Keycloak: {e.detail}",
+            )
+
+        logger.info(
+            f"[{request_id}] Updating role in database for user: {target_user.username}"
+        )
+
+        # Update role in the database
+        target_user.roles = new_role
+
+        await db.commit()
+        await db.refresh(target_user)
+
+        logger.info(
+            f"[{request_id}] Role update completed successfully for user: {target_user.username}"
+        )
+        return target_user
+
+    except HTTPException as e:
+        await db.rollback()
+        logger.error(f"[{request_id}] HTTP error during role update: {str(e)}")
+        raise e
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"[{request_id}] Unexpected error updating user role: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update user role",
+        )

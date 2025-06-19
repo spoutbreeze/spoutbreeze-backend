@@ -1,9 +1,9 @@
 import requests
 from fastapi import HTTPException, status
 from jose import jwt
-from app.config.settings import keycloak_openid, get_settings
+from app.config.settings import keycloak_openid, keycloak_admin, get_settings
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any, Union, List
 import os
 
 from app.config.logger_config import logger
@@ -37,13 +37,16 @@ class AuthService:
         """
         Determine SSL verification method based on certificate availability
         """
-        cert_path = "/app/certs/keycloak.pem"
-        if os.path.exists(cert_path):
-            logger.info(f"Using SSL certificate: {cert_path}")
-            return cert_path
-        else:
-            logger.warning("SSL certificate not found, disabling SSL verification")
-            return False
+        # Check both possible certificate paths
+        cert_paths = ["/app/certs/keycloak.pem", "certs/keycloak.pem"]
+
+        for cert_path in cert_paths:
+            if os.path.exists(cert_path):
+                logger.info(f"Using SSL certificate: {cert_path}")
+                return cert_path
+
+        logger.warning("SSL certificate not found, disabling SSL verification")
+        return False
 
     def validate_token(self, token: str) -> Dict[str, Any]:
         """
@@ -328,3 +331,166 @@ class AuthService:
         except Exception as e:
             logger.error(f"Keycloak health check failed: {str(e)}")
             return False
+
+    def _get_client_id(self, admin_token: str, client_name: str) -> str:
+        """
+        Get the internal client ID for a given client name
+        """
+        try:
+            url = f"{self.settings.keycloak_server_url}/admin/realms/{self.settings.keycloak_realm}/clients"
+            headers = {
+                "Authorization": f"Bearer {admin_token}",
+                "Content-Type": "application/json",
+            }
+
+            params = {"clientId": client_name}
+
+            response = requests.get(
+                url, headers=headers, params=params, verify=self.ssl_verify
+            )
+            response.raise_for_status()
+
+            clients = response.json()
+            if not clients:
+                raise ValueError(f"Client '{client_name}' not found")
+
+            return clients[0]["id"]
+        except Exception as e:
+            logger.error(f"Failed to get client ID for {client_name}: {str(e)}")
+            raise
+
+    def _get_client_role(
+        self, admin_token: str, client_id: str, role_name: str
+    ) -> Dict[str, Any]:
+        """
+        Get client role information
+        """
+        try:
+            url = f"{self.settings.keycloak_server_url}/admin/realms/{self.settings.keycloak_realm}/clients/{client_id}/roles/{role_name}"
+            headers = {
+                "Authorization": f"Bearer {admin_token}",
+                "Content-Type": "application/json",
+            }
+
+            response = requests.get(url, headers=headers, verify=self.ssl_verify)
+            response.raise_for_status()
+
+            return response.json()
+        except Exception as e:
+            logger.error(f"Failed to get client role {role_name}: {str(e)}")
+            raise
+
+    def _get_user_client_roles(
+        self, admin_token: str, user_id: str, client_id: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Get current client roles for a user
+        """
+        try:
+            url = f"{self.settings.keycloak_server_url}/admin/realms/{self.settings.keycloak_realm}/users/{user_id}/role-mappings/clients/{client_id}"
+            headers = {
+                "Authorization": f"Bearer {admin_token}",
+                "Content-Type": "application/json",
+            }
+
+            response = requests.get(url, headers=headers, verify=self.ssl_verify)
+            response.raise_for_status()
+
+            return response.json()
+        except Exception as e:
+            logger.error(f"Failed to get user client roles: {str(e)}")
+            return []
+
+    def _remove_user_client_roles(
+        self,
+        admin_token: str,
+        user_id: str,
+        client_id: str,
+        roles: List[Dict[str, Any]],
+    ) -> None:
+        """
+        Remove client roles from a user
+        """
+        if not roles:
+            return
+
+        try:
+            url = f"{self.settings.keycloak_server_url}/admin/realms/{self.settings.keycloak_realm}/users/{user_id}/role-mappings/clients/{client_id}"
+            headers = {
+                "Authorization": f"Bearer {admin_token}",
+                "Content-Type": "application/json",
+            }
+
+            response = requests.delete(
+                url, json=roles, headers=headers, verify=self.ssl_verify
+            )
+            response.raise_for_status()
+
+            logger.info(f"Successfully removed {len(roles)} client roles from user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to remove client roles: {str(e)}")
+            raise
+
+    def _assign_user_client_role(
+        self, admin_token: str, user_id: str, client_id: str, role: Dict[str, Any]
+    ) -> None:
+        """
+        Assign a client role to a user
+        """
+        try:
+            url = f"{self.settings.keycloak_server_url}/admin/realms/{self.settings.keycloak_realm}/users/{user_id}/role-mappings/clients/{client_id}"
+            headers = {
+                "Authorization": f"Bearer {admin_token}",
+                "Content-Type": "application/json",
+            }
+
+            response = requests.post(
+                url, json=[role], headers=headers, verify=self.ssl_verify
+            )
+            response.raise_for_status()
+
+            logger.info(f"Successfully assigned client role {role['name']} to user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to assign client role: {str(e)}")
+            raise
+
+    def update_user_role(self, user_id: str, new_role: str) -> None:
+        """
+        Update a user's role in Keycloak using the proper Admin REST API
+
+        Args:
+            user_id: The Keycloak user ID
+            new_role: The new role to assign
+        """
+        try:
+            # Get admin token
+            admin_token = self._get_admin_token()
+
+            # Get the spoutbreezeAPI client ID
+            client_id = self._get_client_id(admin_token, "spoutbreezeAPI")
+            logger.info(f"Found client ID: {client_id} for spoutbreezeAPI")
+
+            # Get current client roles for the user
+            current_roles = self._get_user_client_roles(admin_token, user_id, client_id)
+            logger.info(f"Current client roles for user {user_id}: {[role['name'] for role in current_roles]}")
+
+            # Remove all existing client roles for this client
+            if current_roles:
+                self._remove_user_client_roles(admin_token, user_id, client_id, current_roles)
+                logger.info(f"Removed existing client roles from user {user_id}")
+
+            # Get the new role information
+            new_role_info = self._get_client_role(admin_token, client_id, new_role)
+            logger.info(f"Found role info for {new_role}: {new_role_info}")
+
+            # Assign the new client role
+            self._assign_user_client_role(admin_token, user_id, client_id, new_role_info)
+
+            logger.info(f"Successfully updated user {user_id} client role to {new_role}")
+
+        except Exception as e:
+            logger.error(f"Failed to update user role in Keycloak: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to update user role: {str(e)}",
+            )
