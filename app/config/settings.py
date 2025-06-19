@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     keycloak_admin_username: str = "admin"
     keycloak_admin_password: str = "admin"
 
+    domain: str = ".67.222.155.30.nip.io"
+
     model_config = {"env_file": ".env"}
 
 

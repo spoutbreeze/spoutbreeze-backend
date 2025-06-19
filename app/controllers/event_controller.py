@@ -44,7 +44,8 @@ async def create_event(
             event=event_create,
             user_id=UUID(str(current_user.id)),
         )
-        return new_event
+        # Convert SQLAlchemy model to Pydantic model
+        return EventResponse.model_validate(new_event.__dict__)
     except ValueError as e:
         # Handle the case where the event creation fails due to validation errors
         raise HTTPException(status_code=400, detail=str(e))
@@ -134,7 +135,9 @@ async def get_upcoming_events(
     """Get upcoming events for the current user."""
     try:
         events = await event_service.get_upcoming_events(db=db, user_id=current_user.id)
-        return EventListResponse(events=events, total=len(events))
+        # Convert SQLAlchemy models to Pydantic models
+        event_responses = [EventResponse.model_validate(event.__dict__) for event in events]
+        return EventListResponse(events=event_responses, total=len(event_responses))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -147,7 +150,9 @@ async def get_past_events(
     """Get past events for the current user."""
     try:
         events = await event_service.get_past_events(db=db, user_id=current_user.id)
-        return EventListResponse(events=events, total=len(events))
+        # Convert SQLAlchemy models to Pydantic models
+        event_responses = [EventResponse.model_validate(event.__dict__) for event in events]
+        return EventListResponse(events=event_responses, total=len(event_responses))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -160,7 +165,9 @@ async def get_live_events(
     """Get currently live events for the current user."""
     try:
         events = await event_service.get_live_events(db=db, user_id=current_user.id)
-        return EventListResponse(events=events, total=len(events))
+        # Convert SQLAlchemy models to Pydantic models
+        event_responses = [EventResponse.model_validate(event.__dict__) for event in events]
+        return EventListResponse(events=event_responses, total=len(event_responses))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -202,7 +209,9 @@ async def get_all_events(
     """
     try:
         events = await event_service.get_all_events(db=db)
-        return EventListResponse(events=events, total=len(events))
+        # Convert SQLAlchemy models to Pydantic models
+        event_responses = [EventResponse.model_validate(event.__dict__) for event in events]
+        return EventListResponse(events=event_responses, total=len(event_responses))
     except ValueError as e:
         # Handle the case where no events are found
         raise HTTPException(status_code=404, detail=str(e))
@@ -232,7 +241,8 @@ async def get_event(
             db=db,
             event_id=event_id,
         )
-        return event
+        # Convert SQLAlchemy model to Pydantic model
+        return EventResponse.model_validate(event.__dict__)
     except ValueError as e:
         # Handle the case where the event ID is not found
         raise HTTPException(status_code=404, detail=str(e))
@@ -263,8 +273,9 @@ async def get_events_by_channel(
             db=db,
             channel_id=channel_id,
         )
-
-        return EventListResponse(events=events, total=len(events))
+        # Convert SQLAlchemy models to Pydantic models
+        event_responses = [EventResponse.model_validate(event.__dict__) for event in events]
+        return EventListResponse(events=event_responses, total=len(event_responses))
     except ValueError as e:
         # Handle the case where the channel ID is not found
         raise HTTPException(status_code=404, detail=str(e))
@@ -299,7 +310,8 @@ async def update_event(
             event_update=event_update,
             user_id=UUID(str(current_user.id)),
         )
-        return updated_event
+        # Convert SQLAlchemy model to Pydantic model
+        return EventResponse.model_validate(updated_event.__dict__)
     except ValueError as e:
         # Handle the case where the event ID is not found
         raise HTTPException(status_code=404, detail=str(e))

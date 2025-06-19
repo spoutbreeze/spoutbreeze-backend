@@ -8,14 +8,14 @@ from app.models.user_models import User
 from app.models.stream_models import RtmpEndpoint
 
 
-class TestStreamController:
-    """Test cases for stream controller"""
+class TestRtmpController:
+    """Test cases for RTMP controller"""
 
     @pytest.mark.asyncio
-    async def test_create_stream_settings_success(
+    async def test_create_rtmp_endpoint_success(
         self, client: AsyncClient, test_user: User, mock_current_user
     ):
-        """Test successful stream settings creation"""
+        """Test successful rtmp endpoint creation"""
         app.dependency_overrides[get_current_user] = mock_current_user
 
         stream_data = {
@@ -39,10 +39,10 @@ class TestStreamController:
         assert "updated_at" in data
 
     @pytest.mark.asyncio
-    async def test_create_stream_settings_invalid_data(
+    async def test_create_rtmp_endpoint_invalid_data(
         self, client: AsyncClient, test_user: User, mock_current_user
     ):
-        """Test creating stream settings with invalid data"""
+        """Test creating rtmp endpoint with invalid data"""
         app.dependency_overrides[get_current_user] = mock_current_user
 
         # Missing required fields
@@ -56,14 +56,14 @@ class TestStreamController:
         assert response.status_code == 422  # Validation error
 
     @pytest.mark.asyncio
-    async def test_get_stream_settings_by_user(
+    async def test_get_rtmp_endpoints_by_user(
         self,
         client: AsyncClient,
         test_user: User,
         test_stream_settings: RtmpEndpoint,
         mock_current_user,
     ):
-        """Test getting stream settings for current user"""
+        """Test getting rtmp endpoints for current user"""
         app.dependency_overrides[get_current_user] = mock_current_user
 
         response = await client.get("/api/stream-endpoint/")
@@ -78,10 +78,10 @@ class TestStreamController:
         assert data[0]["user_id"] == str(test_user.id)
 
     @pytest.mark.asyncio
-    async def test_get_stream_settings_by_user_no_settings(
+    async def test_get_rtmp_endpoints_by_user_no_endpoints(
         self, client: AsyncClient, test_user: User, mock_current_user
     ):
-        """Test getting stream settings when user has no settings"""
+        """Test getting rtmp endpoints when user has no endpoints"""
         app.dependency_overrides[get_current_user] = mock_current_user
 
         response = await client.get("/api/stream-endpoint/")
@@ -92,14 +92,14 @@ class TestStreamController:
         assert len(data) == 0
 
     @pytest.mark.asyncio
-    async def test_get_stream_settings_by_id_success(
+    async def test_get_rtmp_endpoint_by_id_success(
         self,
         client: AsyncClient,
         test_user: User,
         test_stream_settings: RtmpEndpoint,
         mock_current_user,
     ):
-        """Test getting stream settings by ID"""
+        """Test getting rtmp endpoint by ID"""
         app.dependency_overrides[get_current_user] = mock_current_user
 
         response = await client.get(f"/api/stream-endpoint/{test_stream_settings.id}")
@@ -113,10 +113,10 @@ class TestStreamController:
         assert data["user_id"] == str(test_user.id)
 
     @pytest.mark.asyncio
-    async def test_get_stream_settings_by_id_not_found(
+    async def test_get_rtmp_endpoint_by_id_not_found(
         self, client: AsyncClient, test_user: User, mock_current_user
     ):
-        """Test getting non-existent stream settings"""
+        """Test getting non-existent rtmp endpoint"""
         app.dependency_overrides[get_current_user] = mock_current_user
 
         non_existent_id = uuid4()
@@ -127,14 +127,14 @@ class TestStreamController:
         assert data["detail"] == "Stream settings not found"
 
     @pytest.mark.asyncio
-    async def test_update_stream_settings_success(
+    async def test_update_rtmp_endpoint_success(
         self,
         client: AsyncClient,
         test_user: User,
         test_stream_settings: RtmpEndpoint,
         mock_current_user,
     ):
-        """Test successful stream settings update"""
+        """Test successful rtmp endpoint update"""
         app.dependency_overrides[get_current_user] = mock_current_user
 
         update_data = {
@@ -154,14 +154,14 @@ class TestStreamController:
         assert data["id"] == str(test_stream_settings.id)
 
     @pytest.mark.asyncio
-    async def test_update_stream_settings_partial(
+    async def test_update_rtmp_endpoint_partial(
         self,
         client: AsyncClient,
         test_user: User,
         test_stream_settings: RtmpEndpoint,
         mock_current_user,
     ):
-        """Test partial update of stream settings"""
+        """Test partial update of rtmp endpoint"""
         app.dependency_overrides[get_current_user] = mock_current_user
 
         update_data = {
@@ -180,10 +180,10 @@ class TestStreamController:
         assert data["rtmp_url"] == test_stream_settings.rtmp_url  # Unchanged
 
     @pytest.mark.asyncio
-    async def test_update_stream_settings_not_found(
+    async def test_update_rtmp_endpoint_not_found(
         self, client: AsyncClient, test_user: User, mock_current_user
     ):
-        """Test updating non-existent stream settings"""
+        """Test updating non-existent rtmp endpoint"""
         app.dependency_overrides[get_current_user] = mock_current_user
 
         non_existent_id = uuid4()
@@ -198,14 +198,14 @@ class TestStreamController:
         assert data["detail"] == "Stream settings not found"
 
     @pytest.mark.asyncio
-    async def test_delete_stream_settings_success(
+    async def test_delete_rtmp_endpoint_success(
         self,
         client: AsyncClient,
         test_user: User,
         test_stream_settings: RtmpEndpoint,
         mock_current_user,
     ):
-        """Test successful stream settings deletion"""
+        """Test successful rtmp endpoint deletion"""
         app.dependency_overrides[get_current_user] = mock_current_user
 
         response = await client.delete(
@@ -218,10 +218,10 @@ class TestStreamController:
         assert data["id"] == str(test_stream_settings.id)
 
     @pytest.mark.asyncio
-    async def test_delete_stream_settings_not_found(
+    async def test_delete_rtmp_endpoint_not_found(
         self, client: AsyncClient, test_user: User, mock_current_user
     ):
-        """Test deleting non-existent stream settings"""
+        """Test deleting non-existent rtmp endpoint"""
         app.dependency_overrides[get_current_user] = mock_current_user
 
         non_existent_id = uuid4()
@@ -232,14 +232,14 @@ class TestStreamController:
         assert data["detail"] == "Stream settings not found"
 
     @pytest.mark.asyncio
-    async def test_delete_stream_settings_unauthorized_user(
+    async def test_delete_rtmp_endpoint_unauthorized_user(
         self,
         client: AsyncClient,
         test_stream_settings: RtmpEndpoint,
         mock_current_user,
         db_session,
     ):
-        """Test deleting stream settings as unauthorized user"""
+        """Test deleting rtmp endpoint as unauthorized user"""
         # Create a different user
         different_user = User(
             id=uuid4(),
@@ -267,13 +267,13 @@ class TestStreamController:
         assert data["detail"] == "Stream settings not found"
 
     @pytest.mark.asyncio
-    async def test_create_multiple_stream_settings(
+    async def test_create_multiple_rtmp_endpoints(
         self, client: AsyncClient, test_user: User, mock_current_user
     ):
-        """Test creating multiple stream settings for the same user"""
+        """Test creating multiple rtmp endpoints for the same user"""
         app.dependency_overrides[get_current_user] = mock_current_user
 
-        # Create first stream settings
+        # Create first rtmp endpoint
         stream_data_1 = {
             "title": "Stream 1",
             "stream_key": "key-1",
@@ -282,7 +282,7 @@ class TestStreamController:
         response1 = await client.post("/api/stream-endpoint/create", json=stream_data_1)
         assert response1.status_code == 200
 
-        # Create second stream settings
+        # Create second rtmp endpoint
         stream_data_2 = {
             "title": "Stream 2",
             "stream_key": "key-2",
@@ -291,7 +291,7 @@ class TestStreamController:
         response2 = await client.post("/api/stream-endpoint/create", json=stream_data_2)
         assert response2.status_code == 200
 
-        # Get all stream settings for user
+        # Get all rtmp endpoints for user
         response = await client.get("/api/stream-endpoint/")
         assert response.status_code == 200
         data = response.json()
@@ -317,7 +317,7 @@ class TestStreamController:
         test_stream_settings: RtmpEndpoint,
         mock_current_user,
     ):
-        """Test updating stream settings with empty data"""
+        """Test updating rtmp endpoint with empty data"""
         app.dependency_overrides[get_current_user] = mock_current_user
 
         update_data: dict[str, str] = {}

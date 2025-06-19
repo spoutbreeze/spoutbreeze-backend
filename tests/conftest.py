@@ -4,13 +4,15 @@ import asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.main import app
 from app.config.database.session import get_db, Base
 from app.models.user_models import User
 from app.models.channel.channels_model import Channel
 from app.models.stream_models import RtmpEndpoint
+from app.models.event.event_models import Event
+from app.models.event.event_models import EventStatus  # Import EventStatus
 
 
 # Test database URL (SQLite for simplicity in tests)
@@ -66,6 +68,7 @@ async def db_session(setup_database):
             # Clean up database after each test
             await session.rollback()
             # Delete all data from tables to ensure clean state
+            await session.execute(Event.__table__.delete())
             await session.execute(RtmpEndpoint.__table__.delete())
             await session.execute(Channel.__table__.delete())
             await session.execute(User.__table__.delete())
@@ -141,6 +144,32 @@ async def test_stream_settings(db_session: AsyncSession, test_user: User):
     await db_session.commit()
     await db_session.refresh(stream_settings)
     return stream_settings
+
+
+@pytest_asyncio.fixture
+async def test_event(db_session: AsyncSession, test_user: User, test_channel: Channel):
+    """Create a test event"""
+    future_date = datetime.now() + timedelta(hours=1)
+    event = Event(
+        id=uuid4(),
+        title=f"Test Event {uuid4()}",
+        description="Test event description",
+        occurs="once",
+        start_date=future_date.date(),
+        end_date=future_date.date(),
+        start_time=future_date,
+        timezone="UTC",
+        channel_id=test_channel.id,
+        creator_id=test_user.id,
+        meeting_created=False,
+        status=EventStatus.SCHEDULED,  # Use the enum value directly
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    db_session.add(event)
+    await db_session.commit()
+    await db_session.refresh(event)
+    return event
 
 
 @pytest.fixture

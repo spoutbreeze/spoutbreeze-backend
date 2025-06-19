@@ -1,6 +1,7 @@
 from __future__ import annotations
 import uuid
 from datetime import datetime
+from typing import List, TYPE_CHECKING, Optional
 
 from sqlalchemy import String, DateTime, Boolean
 from sqlalchemy.dialects.postgresql import UUID
@@ -10,7 +11,9 @@ from app.models.bbb_models import BbbMeeting
 from app.models.channel.channels_model import Channel
 from app.models.stream_models import RtmpEndpoint
 from app.models.event.event_models import Event
-from typing import List
+
+if TYPE_CHECKING:
+    from app.models.twitch.twitch_models import TwitchToken
 
 
 class User(Base):
@@ -63,6 +66,9 @@ class User(Base):
         cascade_backrefs=False,
         passive_deletes=True,
     )
+    twitch_tokens: Mapped[List["TwitchToken"]] = relationship(
+        "TwitchToken", back_populates="user", cascade="all, delete-orphan"
+    )
 
     def get_roles_list(self) -> List[str]:
         """Get roles as a list from comma-separated string"""
@@ -92,6 +98,15 @@ class User(Base):
     def is_moderator(self) -> bool:
         """Check if user has moderator role"""
         return self.has_role("moderator")
+
+    def get_active_twitch_token(self) -> Optional["TwitchToken"]:
+        """Get the user's active Twitch token"""
+        from datetime import datetime
+
+        for token in self.twitch_tokens:
+            if token.is_active and token.expires_at > datetime.now():
+                return token
+        return None
 
     def __repr__(self) -> str:
         return f"<User(id={self.id!r}, username={self.username!r}, email={self.email!r}, roles={self.roles!r})>"

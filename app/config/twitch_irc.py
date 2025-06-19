@@ -16,7 +16,7 @@ logger = get_logger("Twitch")
 
 
 class TwitchIRCClient:
-    def __init__(self):
+    def __init__(self, user_id: Optional[str] = None):  # Keep it optional but add user_id
         self.settings = get_settings()
         self.server = self.settings.twitch_server
         self.port = self.settings.twitch_port
@@ -25,6 +25,7 @@ class TwitchIRCClient:
         self.reader = None
         self.writer = None
         self.token = None
+        self.user_id = user_id  # Store user_id for user-specific connections
 
     def _get_public_ssl_context(self):
         """Create SSL context for public APIs (like Twitch) with system certificates"""
@@ -56,38 +57,68 @@ class TwitchIRCClient:
         # Last resort: use default context (might fail)
         return ssl.create_default_context()
 
-    async def get_active_token(self) -> str:
-        """Get the active token from database"""
+    async def get_active_token(self, user_id: Optional[str] = None) -> str:
+        """Get the active token from database - user-specific if user_id provided"""
         try:
-            # Get database session
+            target_user_id = user_id or self.user_id
+            
             async for db in get_db():
-                # Query for active, non-expired token
-                stmt = (
-                    select(TwitchToken)
-                    .where(
-                        TwitchToken.is_active,
-                        TwitchToken.expires_at > datetime.now(),
+                if target_user_id:
+                    # User-specific token query
+                    import uuid
+                    user_uuid = uuid.UUID(target_user_id) if isinstance(target_user_id, str) else target_user_id
+                    
+                    stmt = (
+                        select(TwitchToken)
+                        .where(
+                            TwitchToken.user_id == user_uuid,
+                            TwitchToken.is_active,
+                            TwitchToken.expires_at > datetime.now(),
+                        )
+                        .order_by(TwitchToken.created_at.desc())
                     )
-                    .order_by(TwitchToken.created_at.desc())
-                )
+                    
+                    result = await db.execute(stmt)
+                    token_record = result.scalars().first()
 
-                result = await db.execute(stmt)
-                token_record = result.scalars().first()
-
-                if token_record:
-                    logger.info("[TwitchIRC] Using database user access token")
-                    return token_record.access_token
+                    if token_record:
+                        logger.info(f"[TwitchIRC] Using database token for user {target_user_id}")
+                        return token_record.access_token
+                    else:
+                        logger.warning(f"[TwitchIRC] No valid token found for user {target_user_id}")
+                        raise HTTPException(
+                            status_code=401,
+                            detail=f"No valid Twitch token found for user {target_user_id}. Please authenticate via /auth/twitch/login",
+                        )
                 else:
-                    logger.warning("[TwitchIRC] No valid token found in database")
-                    raise HTTPException(
-                        status_code=401,
-                        detail="No valid Twitch token found. Please authenticate via /auth/twitch/login",
+                    # Global token query (for backward compatibility)
+                    stmt = (
+                        select(TwitchToken)
+                        .where(
+                            TwitchToken.is_active,
+                            TwitchToken.expires_at > datetime.now(),
+                        )
+                        .order_by(TwitchToken.created_at.desc())
                     )
 
-            # This should never be reached due to the logic above, but mypy needs it
+                    result = await db.execute(stmt)
+                    token_record = result.scalars().first()
+
+                    if token_record:
+                        logger.info(f"[TwitchIRC] Using database token for user {token_record.user_id}")
+                        return token_record.access_token
+                    else:
+                        logger.warning("[TwitchIRC] No valid token found")
+                        raise HTTPException(
+                            status_code=401,
+                            detail="No valid Twitch token found. Please authenticate via /auth/twitch/login",
+                        )
+            
+            # If we reach here, no database session was available
+            logger.error("[TwitchIRC] No database session available")
             raise HTTPException(
-                status_code=500,
-                detail="Unexpected error: database session not available",
+                status_code=500, 
+                detail="Database connection error"
             )
 
         except HTTPException:
@@ -98,30 +129,45 @@ class TwitchIRCClient:
                 status_code=500, detail="Database error while fetching Twitch token"
             )
 
-    async def refresh_token_if_needed(self):
-        """Check if token needs refresh and refresh if possible"""
+    async def refresh_token_if_needed(self, user_id: Optional[str] = None):
+        """Check if token needs refresh - user-specific if user_id provided"""
         try:
+            target_user_id = user_id or self.user_id
+
             async for db in get_db():
-                stmt = (
-                    select(TwitchToken)
-                    .where(TwitchToken.is_active)
-                    .order_by(TwitchToken.created_at.desc())
-                )
+                if target_user_id:
+                    # User-specific refresh
+                    import uuid
+                    user_uuid = uuid.UUID(target_user_id) if isinstance(target_user_id, str) else target_user_id
+                    
+                    stmt = (
+                        select(TwitchToken)
+                        .where(
+                            TwitchToken.user_id == user_uuid,
+                            TwitchToken.is_active,
+                        )
+                        .order_by(TwitchToken.created_at.desc())
+                    )
+                else:
+                    # Global refresh (backward compatibility)
+                    stmt = (
+                        select(TwitchToken)
+                        .where(TwitchToken.is_active)
+                        .order_by(TwitchToken.created_at.desc())
+                    )
 
                 result = await db.execute(stmt)
                 token_record = result.scalars().first()
 
                 if not token_record:
-                    logger.warning("[TwitchIRC] No active token found")
+                    logger.warning(f"[TwitchIRC] No active token found")
                     break
 
                 # Check if token expires within 5 minutes or has already expired
                 expires_soon = datetime.now() + timedelta(minutes=5)
 
                 if token_record.expires_at <= expires_soon:
-                    logger.info(
-                        "[TwitchIRC] Token expires soon or has expired, attempting refresh..."
-                    )
+                    logger.info("[TwitchIRC] Token expires soon or has expired, attempting refresh...")
 
                     if token_record.refresh_token:
                         new_token_data = await self._refresh_access_token(
@@ -138,29 +184,20 @@ class TwitchIRCClient:
                             token_record.expires_at = new_expires_at
                             # Refresh token might be updated too
                             if new_token_data.get("refresh_token"):
-                                token_record.refresh_token = new_token_data[
-                                    "refresh_token"
-                                ]
+                                token_record.refresh_token = new_token_data["refresh_token"]
 
                             await db.commit()
                             logger.info("[TwitchIRC] Token refreshed successfully")
 
                             # Update the current token if we're using this one
-                            if (
-                                hasattr(self, "token")
-                                and self.token == token_record.access_token
-                            ):
+                            if hasattr(self, "token") and self.token == token_record.access_token:
                                 self.token = new_token_data["access_token"]
                         else:
-                            logger.error(
-                                "[TwitchIRC] Failed to refresh token, marking as inactive"
-                            )
+                            logger.error("[TwitchIRC] Failed to refresh token, marking as inactive")
                             token_record.is_active = False
                             await db.commit()
                     else:
-                        logger.warning(
-                            "[TwitchIRC] No refresh token available, marking as inactive"
-                        )
+                        logger.warning("[TwitchIRC] No refresh token available, marking as inactive")
                         token_record.is_active = False
                         await db.commit()
                 break

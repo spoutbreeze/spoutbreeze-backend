@@ -64,7 +64,7 @@ def set_auth_cookies(response: Response, token_data: Dict[str, Any]) -> None:
         secure=True,
         samesite="none",
         path="/",
-        domain=".67.222.155.30.nip.io",
+        domain=settings.domain,
     )
 
     # Set refresh token cookie
@@ -76,7 +76,7 @@ def set_auth_cookies(response: Response, token_data: Dict[str, Any]) -> None:
         secure=True,
         samesite="none",
         path="/",
-        domain=".67.222.155.30.nip.io",
+        domain=settings.domain,
     )
 
 
@@ -88,8 +88,8 @@ def clear_auth_cookies(response: Response) -> None:
         response: FastAPI Response object
     """
     # Clear your application cookies
-    response.delete_cookie("access_token", path="/", domain=".67.222.155.30.nip.io")
-    response.delete_cookie("refresh_token", path="/", domain=".67.222.155.30.nip.io")
+    response.delete_cookie("access_token", path="/", domain=settings.domain)
+    response.delete_cookie("refresh_token", path="/", domain=settings.domain)
 
     # Clear Keycloak cookies - these need to match your Keycloak domain
     keycloak_cookies = [
@@ -100,7 +100,7 @@ def clear_auth_cookies(response: Response) -> None:
     ]
 
     # Get the Keycloak domain from your server URL
-    keycloak_domain = ".67.222.155.30.nip.io"  # Same as your main domain
+    keycloak_domain = settings.domain  # Same as your main domain
 
     for cookie_name in keycloak_cookies:
         # Clear for main domain
