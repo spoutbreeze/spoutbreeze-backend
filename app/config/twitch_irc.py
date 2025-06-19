@@ -113,6 +113,13 @@ class TwitchIRCClient:
                             status_code=401,
                             detail="No valid Twitch token found. Please authenticate via /auth/twitch/login",
                         )
+            
+            # If we reach here, no database session was available
+            logger.error("[TwitchIRC] No database session available")
+            raise HTTPException(
+                status_code=500, 
+                detail="Database connection error"
+            )
 
         except HTTPException:
             raise

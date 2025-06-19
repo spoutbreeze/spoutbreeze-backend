@@ -5,7 +5,7 @@ from app.config.logger_config import get_logger
 logger = get_logger("TwitchService")
 
 class TwitchService:
-    def __init__(self):
+    def __init__(self) -> None:
         self._user_connections: Dict[str, TwitchIRCClient] = {}
 
     async def start_connection_for_user(self, user_id: str) -> bool:
@@ -50,7 +50,7 @@ class TwitchService:
         """Get existing connection for a user"""
         return self._user_connections.get(user_id)
 
-    async def disconnect_all(self):
+    async def disconnect_all(self) -> None:
         """Disconnect all user connections"""
         for user_id, client in list(self._user_connections.items()):
             try:

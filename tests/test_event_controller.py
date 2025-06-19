@@ -378,7 +378,7 @@ class TestEventController:
     ):
         """Test joining event with invalid data"""
         # Missing full_name
-        join_data = {}
+        join_data: dict[str, str] = {}
 
         response = await client.post(f"/api/events/{test_event.id}/join-url", json=join_data)
 
