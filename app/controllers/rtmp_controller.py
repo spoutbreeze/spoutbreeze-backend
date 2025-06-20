@@ -42,6 +42,9 @@ async def create_rtmp_endpoints(
             db=db,
         )
         return new_rtmp_endpoints
+    except ValueError as e:
+        # Handle unique constraint violations with proper error messages
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -66,6 +69,28 @@ async def get_rtmp_endpoints(
             user_id=UUID(str(current_user.id)),
             db=db,
         )
+        return rtmp_endpoints
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/all", response_model=List[RtmpEndpointResponse])
+async def get_all_rtmp_endpoints(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> List[RtmpEndpointResponse]:
+    """
+    Get all stream settings for all users.
+
+    Args:
+        db: The database session.
+        current_user: The current user (for authentication).
+
+    Returns:
+        A list of all stream settings from all users.
+    """
+    try:
+        rtmp_endpoints = await rtmp_service.get_all_rtmp_endpoints(db=db)
         return rtmp_endpoints
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
