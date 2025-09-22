@@ -54,6 +54,14 @@ class Settings(BaseSettings):
 
     domain: str = "localhost"
 
+    redis_url: str = "redis://localhost:6379/0"
+
+    cache_ttl_short: int = 300      # 5 minutes
+    cache_ttl_medium: int = 1800    # 30 minutes  
+    cache_ttl_long: int = 3600      # 1 hour
+    cache_ttl_user: int = 900       # 15 minutes
+    cache_ttl_bbb: int = 180        # 3 minutes (BBB data changes frequently)
+
     model_config = {"env_file": ".env"}
 
 
