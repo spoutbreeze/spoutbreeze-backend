@@ -11,20 +11,22 @@ from app.models.stream_schemas import (
 )
 from app.config.redis_config import cached_db, cache
 from app.config.logger_config import get_logger
+from app.config.settings import get_settings
 
 logger = get_logger("RtmpServiceCached")
+settings = get_settings()
 
 class RtmpEndpointServiceCached(RtmpEndpointService):
     # READS: cache
-    @cached_db(ttl=900, key_prefix="rtmp_all")  # 15 min
+    @cached_db(ttl=settings.cache_ttl_long, key_prefix="rtmp_all")  # 1 hour
     async def get_all_rtmp_endpoints(self, db: AsyncSession) -> List[RtmpEndpointResponse]:
         return await super().get_all_rtmp_endpoints(db)
 
-    @cached_db(ttl=900, key_prefix="rtmp_user")  # 15 min
+    @cached_db(ttl=settings.cache_ttl_long, key_prefix="rtmp_user")  # 1 hour
     async def get_rtmp_endpoints_by_user_id(self, user_id: UUID, db: AsyncSession) -> List[RtmpEndpointResponse]:
         return await super().get_rtmp_endpoints_by_user_id(user_id, db)
 
-    @cached_db(ttl=900, key_prefix="rtmp_by_id")  # 15 min
+    @cached_db(ttl=settings.cache_ttl_long, key_prefix="rtmp_by_id")  # 1 hour
     async def get_rtmp_endpoints_by_id(self, rtmp_endpoints_id: UUID, db: AsyncSession) -> Optional[RtmpEndpointResponse]:
         return await super().get_rtmp_endpoints_by_id(rtmp_endpoints_id, db)
 
