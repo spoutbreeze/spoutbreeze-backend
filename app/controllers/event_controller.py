@@ -13,11 +13,11 @@ from app.models.event.event_schemas import (
     EventUpdate,
     JoinEventRequest,
 )
-from app.services.event_service import EventService
+from app.services.cached.event_service_cached import EventServiceCached
 from app.services.bbb_service import BBBService
 
 router = APIRouter(prefix="/api/events", tags=["Events"])
-event_service = EventService()
+event_service = EventServiceCached()
 bbb_service = BBBService()
 
 
