@@ -12,7 +12,7 @@ from app.models.stream_schemas import (
     CreateRtmpEndpointCreate,
     RtmpEndpointDeleteResponse,
 )
-from app.services.rtmp_service_cached import RtmpEndpointServiceCached
+from app.services.cached.rtmp_service_cached import RtmpEndpointServiceCached
 
 router = APIRouter(prefix="/api/stream-endpoint", tags=["Stream Endpoints"])
 rtmp_service = RtmpEndpointServiceCached()

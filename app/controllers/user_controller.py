@@ -9,7 +9,7 @@ from app.models.user_models import User
 from app.models.user_schemas import UserResponse, UpdateProfileRequest, UpdateUserRoleRequest
 from app.config.logger_config import logger
 from app.config.settings import get_settings
-from app.services.user_service_cached import user_service_cached
+from app.services.cached.user_service_cached import user_service_cached
 from app.config.redis_config import cache
 import uuid
 from app.config.redis_config import generate_cache_key
