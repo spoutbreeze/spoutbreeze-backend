@@ -102,7 +102,7 @@ async def database_health_check(
 
 
 @router.get("/health/cache")
-async def health_check(response: Response) -> Dict[str, Any]:
+async def cache_health_check(response: Response) -> Dict[str, Any]:
     """
     Cache-specific health check endpoint
     """

@@ -1,7 +1,7 @@
 from __future__ import annotations
 import pickle
 import hashlib
-from typing import Optional, Callable
+from typing import Optional, Callable, Any, TypeVar, ParamSpec, Awaitable, cast
 from functools import wraps
 
 import redis.asyncio as redis
@@ -16,10 +16,10 @@ logger = get_logger("Redis")
 
 
 class RedisCache:
-    def __init__(self):
+    def __init__(self) -> None:
         self.redis_client: Optional[Redis] = None
 
-    async def connect(self):
+    async def connect(self) -> None:
         if self.redis_client:
             return
         try:
@@ -38,14 +38,14 @@ class RedisCache:
             logger.error(f"Redis connect failed: {e}")
             self.redis_client = None
 
-    async def close(self):
+    async def close(self) -> None:
         if self.redis_client:
             try:
                 await self.redis_client.close()
             except Exception as e:
                 logger.error(f"Redis close error: {e}")
 
-    async def get(self, key: str):
+    async def get(self, key: str) -> Optional[Any]:
         if not self.redis_client:
             return None
         try:
@@ -57,7 +57,7 @@ class RedisCache:
             logger.error(f"GET {key} error: {e}")
             return None
 
-    async def set(self, key: str, value, ttl: int = 300):
+    async def set(self, key: str, value: Any, ttl: int = 300) -> bool:
         if not self.redis_client:
             return False
         try:
@@ -68,7 +68,7 @@ class RedisCache:
             logger.error(f"SET {key} error: {e}")
             return False
 
-    async def delete(self, key: str):
+    async def delete(self, key: str) -> bool:
         if not self.redis_client:
             return False
         try:
@@ -78,7 +78,7 @@ class RedisCache:
             logger.error(f"DEL {key} error: {e}")
             return False
 
-    async def delete_pattern(self, pattern: str):
+    async def delete_pattern(self, pattern: str) -> bool:
         if not self.redis_client:
             return False
         try:
@@ -100,25 +100,33 @@ class RedisCache:
             return False
 
 
-cache = RedisCache()
+cache: RedisCache = RedisCache()
 
 
-def generate_cache_key(*args, **kwargs) -> str:
+def generate_cache_key(*args: Any, **kwargs: Any) -> str:
     key_data = str(args) + str(sorted(kwargs.items()))
     return hashlib.md5(key_data.encode()).hexdigest()
 
 
-def cached(ttl: int = 300, key_prefix: str = ""):
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def cached(
+    ttl: int = 300, key_prefix: str = ""
+) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
     # Generic decorator (keeps all args) - NOT ideal for DB session
-    def decorator(func):
+    def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
         @wraps(func)
-        async def wrapper(*args, **kwargs):
-            k = f"{key_prefix}:{func.__name__}:{generate_cache_key(*args, **kwargs)}"
-            hit = await cache.get(k)
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            k: str = (
+                f"{key_prefix}:{func.__name__}:{generate_cache_key(*args, **kwargs)}"
+            )
+            hit: Optional[R] = cast(Optional[R], await cache.get(k))
             if hit is not None:
                 logger.info(f"Cache HIT for key: {k}")
                 return hit
-            result = await func(*args, **kwargs)
+            result: R = await func(*args, **kwargs)
             await cache.set(k, result, ttl)
             return result
 
@@ -127,21 +135,23 @@ def cached(ttl: int = 300, key_prefix: str = ""):
     return decorator
 
 
-def cached_db(ttl: int = 300, key_prefix: str = ""):
+def cached_db(
+    ttl: int = 300, key_prefix: str = ""
+) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
     # Excludes AsyncSession objects from cache key
-    def decorator(func: Callable):
+    def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             filt_args = [a for a in args if not isinstance(a, AsyncSession)]
             filt_kwargs = {
                 k: v for k, v in kwargs.items() if not isinstance(v, AsyncSession)
             }
-            k = f"{key_prefix}:{func.__name__}:{generate_cache_key(*filt_args, **filt_kwargs)}"
-            hit = await cache.get(k)
+            k: str = f"{key_prefix}:{func.__name__}:{generate_cache_key(*filt_args, **filt_kwargs)}"
+            hit: Optional[R] = cast(Optional[R], await cache.get(k))
             if hit is not None:
                 logger.info(f"Cache HIT for key: {k}")
                 return hit
-            result = await func(*args, **kwargs)
+            result: R = await func(*args, **kwargs)
             await cache.set(k, result, ttl)
             return result
 
