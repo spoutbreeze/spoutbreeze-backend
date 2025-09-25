@@ -3,7 +3,6 @@ from httpx import AsyncClient
 from uuid import uuid4
 
 
-
 class TestBroadcasterController:
     """Test cases for broadcaster controller"""
 
