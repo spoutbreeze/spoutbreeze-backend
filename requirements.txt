@@ -80,3 +80,4 @@ websockets==15.0.1
 yarl==1.20.0
 redis>=4.6.0
 aioredis>=2.0.1
+pytest-cov==5.0.0
