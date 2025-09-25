@@ -1,7 +1,7 @@
 from __future__ import annotations
 import pickle
 import hashlib
-from typing import Optional, Callable, Any, TypeVar, ParamSpec, Awaitable, cast
+from typing import Optional, Callable, Any, TypeVar, ParamSpec, cast, Coroutine
 from functools import wraps
 
 import redis.asyncio as redis
@@ -114,9 +114,9 @@ R = TypeVar("R")
 
 def cached(
     ttl: int = 300, key_prefix: str = ""
-) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
+) -> Callable[[Callable[P, Coroutine[Any, Any, R]]], Callable[P, Coroutine[Any, Any, R]]]:
     # Generic decorator (keeps all args) - NOT ideal for DB session
-    def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
+    def decorator(func: Callable[P, Coroutine[Any, Any, R]]) -> Callable[P, Coroutine[Any, Any, R]]:
         @wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             k: str = (
@@ -137,9 +137,9 @@ def cached(
 
 def cached_db(
     ttl: int = 300, key_prefix: str = ""
-) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
+) -> Callable[[Callable[P, Coroutine[Any, Any, R]]], Callable[P, Coroutine[Any, Any, R]]]:
     # Excludes AsyncSession objects from cache key
-    def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
+    def decorator(func: Callable[P, Coroutine[Any, Any, R]]) -> Callable[P, Coroutine[Any, Any, R]]:
         @wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             filt_args = [a for a in args if not isinstance(a, AsyncSession)]
