@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,9 +51,7 @@ class EventServiceCached(EventService):
         return await super().get_live_events(db, user_id)
 
     @cached_db(ttl=settings.cache_ttl_long, key_prefix="events_by_id")
-    async def get_event_by_id(
-        self, db: AsyncSession, event_id: UUID
-    ) -> EventResponse:
+    async def get_event_by_id(self, db: AsyncSession, event_id: UUID) -> EventResponse:
         return await super().get_event_by_id(db, event_id)
 
     @cached_db(ttl=settings.cache_ttl_long, key_prefix="events_channel")
@@ -61,7 +59,6 @@ class EventServiceCached(EventService):
         self, db: AsyncSession, channel_id: UUID
     ) -> List[EventResponse]:
         return await super().get_events_by_channel_id(db, channel_id)
-
 
     @cached_db(ttl=settings.cache_ttl_short, key_prefix="events_join")
     async def join_event(
@@ -73,7 +70,6 @@ class EventServiceCached(EventService):
     ) -> Dict[str, str]:
         return await super().join_event(db, event_id, user_id, full_name)
 
-    
     async def create_event(
         self,
         db: AsyncSession,
@@ -112,7 +108,9 @@ class EventServiceCached(EventService):
         user_id: UUID,
     ) -> EventResponse:
         res = await super().update_event(db, event_id, event_update, user_id)
-        await self._invalidate_after_change(event_id=event_id, channel_id=res.channel_id)
+        await self._invalidate_after_change(
+            event_id=event_id, channel_id=res.channel_id
+        )
         return res
 
     async def delete_event(

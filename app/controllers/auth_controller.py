@@ -62,9 +62,9 @@ def set_auth_cookies(response: Response, token_data: Dict[str, Any]) -> None:
         expires=access_token_expires,
         httponly=True,
         secure=False,  # change in production to True
-        samesite="lax", # change to none for cross-domain
+        samesite="lax",  # change to none for cross-domain
         path="/",
-        domain=None, # change to our domain in production
+        domain=None,  # change to our domain in production
     )
 
     # Set refresh token cookie
@@ -74,9 +74,9 @@ def set_auth_cookies(response: Response, token_data: Dict[str, Any]) -> None:
         expires=refresh_token_expires,
         httponly=True,
         secure=False,  # change in production to True
-        samesite="lax", # change to none for cross-domain
+        samesite="lax",  # change to none for cross-domain
         path="/",
-        domain=None, # change to our domain in production
+        domain=None,  # change to our domain in production
     )
 
 

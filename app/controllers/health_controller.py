@@ -100,6 +100,7 @@ async def database_health_check(
             "database": {"status": "unhealthy", "error": str(e)},
         }
 
+
 @router.get("/health/cache")
 async def health_check(response: Response) -> Dict[str, Any]:
     """

@@ -24,7 +24,6 @@ from app.config.twitch_irc import TwitchIRCClient
 from app.config.logger_config import get_logger
 from app.config.settings import get_settings
 from app.config.redis_config import cache
-import asyncio
 
 logger = get_logger("Main")
 setting = get_settings()
@@ -40,7 +39,7 @@ async def lifespan(app: FastAPI):
     Lifespan context manager for the FastAPI application
     """
     logger.info("=== APPLICATION STARTUP ===")
-    
+
     # Startup: Configure OpenAPI schema
     openapi_schema = get_openapi(
         title="SpoutBreeze API",
@@ -92,7 +91,7 @@ async def lifespan(app: FastAPI):
     )
     scheduler.start()
     logger.info("[Scheduler] BBB meeting cleanup job scheduled")
-    
+
     logger.info("=== APPLICATION STARTUP COMPLETE ===")
 
     yield  # App is running
@@ -100,7 +99,7 @@ async def lifespan(app: FastAPI):
     logger.info("=== APPLICATION SHUTDOWN ===")
     await cache.close()
     logger.info("[cache] Redis cache connection closed")
-    
+
     # Shutdown: cancel the IRC task
     # twitch_tasks.cancel()
     # try:
@@ -118,19 +117,23 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
 # Add request logging middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start_time = time.time()
     logger.info(f"Incoming request: {request.method} {request.url}")
     logger.info(f"Headers: {dict(request.headers)}")
-    
+
     response = await call_next(request)
-    
+
     process_time = time.time() - start_time
-    logger.info(f"Request completed: {request.method} {request.url} - Status: {response.status_code} - Time: {process_time:.4f}s")
-    
+    logger.info(
+        f"Request completed: {request.method} {request.url} - Status: {response.status_code} - Time: {process_time:.4f}s"
+    )
+
     return response
+
 
 # Override the default Swagger UI to add OAuth support
 @app.get("/docs", include_in_schema=False)
@@ -153,6 +156,7 @@ async def custom_swagger_ui_html():
             "additionalQueryStringParams": {},
         },
     )
+
 
 origins = [
     "http://localhost:3000",  # Frontend URL in development
@@ -214,6 +218,7 @@ async def root():
     logger.info("Root endpoint accessed")
     return {"message": "Welcome to SpoutBreeze API", "timestamp": time.time()}
 
+
 # Add a simple test endpoint
 @app.get("/api/test", tags=["Test"])
 async def test_endpoint():
@@ -222,8 +227,9 @@ async def test_endpoint():
     return {
         "status": "success",
         "message": "API is working correctly",
-        "timestamp": time.time()
+        "timestamp": time.time(),
     }
+
 
 # Include routers
 app.include_router(health_router)

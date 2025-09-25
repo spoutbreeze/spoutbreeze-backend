@@ -2,18 +2,19 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, Path
 from typing import List
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from app.services.auth_service import AuthService
 from app.config.database.session import get_db
 from app.models.user_models import User
-from app.models.user_schemas import UserResponse, UpdateProfileRequest, UpdateUserRoleRequest
+from app.models.user_schemas import (
+    UserResponse,
+    UpdateProfileRequest,
+    UpdateUserRoleRequest,
+)
 from app.config.logger_config import logger
 from app.config.settings import get_settings
 from app.services.cached.user_service_cached import user_service_cached
 from app.config.redis_config import cache
 import uuid
-from app.config.redis_config import generate_cache_key
-import time
 
 
 auth_service = AuthService()
@@ -83,6 +84,7 @@ def require_role(required_role: str):
     """
     Create a dependency that checks for a specific role using database roles
     """
+
     def role_checker(current_user: User = Depends(get_current_user)):
         if not current_user.has_role(required_role):
             raise HTTPException(
@@ -98,6 +100,7 @@ def require_any_role(*required_roles: str):
     """
     Create a dependency that checks for any of the specified roles using database roles
     """
+
     def role_checker(current_user: User = Depends(get_current_user)):
         if not current_user.has_any_role(*required_roles):
             raise HTTPException(
@@ -163,16 +166,14 @@ async def update_user_profile(
 
         # Update user in the database using cached service
         updated_user = await user_service_cached.update_user_profile(
-            user_id=current_user.id,
-            updates=profile_update_data,
-            db=db
+            user_id=current_user.id, updates=profile_update_data, db=db
         )
 
         logger.info(
             f"[{request_id}] Profile update completed successfully for user: {current_user.username}"
         )
         return updated_user
-        
+
     except HTTPException as e:
         await db.rollback()
         logger.error(f"[{request_id}] HTTP error during profile update: {str(e)}")
@@ -198,7 +199,7 @@ async def get_users(
     Get a list of users (Admin only) with caching
     """
     logger.info(f"Admin user {current_user.username} is requesting users list")
-    
+
     try:
         users = await user_service_cached.get_users_list_cached(skip, limit, db)
         return users
@@ -206,7 +207,7 @@ async def get_users(
         logger.error(f"Error fetching users list: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch users list"
+            detail="Failed to fetch users list",
         )
 
 
@@ -221,7 +222,7 @@ async def get_user_by_id(
     Get a user by ID (Admin/Moderator only) with caching
     """
     logger.info(f"User {current_user.username} is requesting user {user_id}")
-    
+
     try:
         user = await user_service_cached.get_user_by_id_cached(user_id, db)
 
@@ -238,7 +239,7 @@ async def get_user_by_id(
         logger.error(f"Error fetching user {user_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch user"
+            detail="Failed to fetch user",
         )
 
 
@@ -298,8 +299,7 @@ async def update_user_role(
         # Update role in Keycloak first
         try:
             auth_service.update_user_role(
-                user_id=target_user.keycloak_id, 
-                new_role=new_role
+                user_id=target_user.keycloak_id, new_role=new_role
             )
         except HTTPException as e:
             logger.error(f"[{request_id}] Keycloak role update failed: {e.detail}")
@@ -314,9 +314,7 @@ async def update_user_role(
 
         # Update role in the database using cached service
         updated_user = await user_service_cached.update_user_role(
-            user_id=user_id,
-            new_role=new_role,
-            db=db
+            user_id=user_id, new_role=new_role, db=db
         )
 
         logger.info(
@@ -352,16 +350,18 @@ async def invalidate_user_cache(
         # Get user to find keycloak_id using the properly injected db session
         user = await user_service_cached.get_user_by_id_cached(user_id, db)
         keycloak_id = user.keycloak_id if user else None
-        
+
         await user_service_cached.invalidate_user_cache(user_id, keycloak_id)
-        
-        logger.info(f"Admin {current_user.username} invalidated cache for user {user_id}")
+
+        logger.info(
+            f"Admin {current_user.username} invalidated cache for user {user_id}"
+        )
         return {"message": f"Cache invalidated for user {user_id}"}
     except Exception as e:
         logger.error(f"Failed to invalidate cache for user {user_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to invalidate user cache"
+            detail="Failed to invalidate user cache",
         )
 
 
@@ -376,21 +376,20 @@ async def get_cache_stats(
     try:
         # This is a simple implementation - Redis has more detailed stats available
         cache_healthy = await cache.health_check()
-        
+
         return {
             "cache_status": "healthy" if cache_healthy else "unhealthy",
             "redis_connected": cache.redis_client is not None,
             "cache_patterns": [
                 "user_profile:*",
-                "user_keycloak:*", 
+                "user_keycloak:*",
                 "user_roles:*",
-                "users_list:*"
-            ]
+                "users_list:*",
+            ],
         }
     except Exception as e:
         logger.error(f"Failed to get cache stats: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get cache statistics"
+            detail="Failed to get cache statistics",
         )
-    

@@ -1,8 +1,7 @@
 from __future__ import annotations
-import asyncio
 import pickle
 import hashlib
-from typing import Optional, Callable, Any, Dict
+from typing import Optional, Callable
 from functools import wraps
 
 import redis.asyncio as redis
@@ -14,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 settings = get_settings()
 logger = get_logger("Redis")
+
 
 class RedisCache:
     def __init__(self):
@@ -99,11 +99,14 @@ class RedisCache:
         except Exception:
             return False
 
+
 cache = RedisCache()
+
 
 def generate_cache_key(*args, **kwargs) -> str:
     key_data = str(args) + str(sorted(kwargs.items()))
     return hashlib.md5(key_data.encode()).hexdigest()
+
 
 def cached(ttl: int = 300, key_prefix: str = ""):
     # Generic decorator (keeps all args) - NOT ideal for DB session
@@ -118,8 +121,11 @@ def cached(ttl: int = 300, key_prefix: str = ""):
             result = await func(*args, **kwargs)
             await cache.set(k, result, ttl)
             return result
+
         return wrapper
+
     return decorator
+
 
 def cached_db(ttl: int = 300, key_prefix: str = ""):
     # Excludes AsyncSession objects from cache key
@@ -138,5 +144,7 @@ def cached_db(ttl: int = 300, key_prefix: str = ""):
             result = await func(*args, **kwargs)
             await cache.set(k, result, ttl)
             return result
+
         return wrapper
+
     return decorator
